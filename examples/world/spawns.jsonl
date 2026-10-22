@@ -1,0 +1,2 @@
+{"holder_kind":"npc","holder_id":400001,"coords":{"map_id":1,"zone_id":40,"x":56.4,"y":47.1},"n":18,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}
+{"holder_kind":"object","holder_id":500001,"coords":{"map_id":1,"zone_id":40,"x":31.0,"y":62.5},"n":0,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"emu_seed","ref":"vmangos/core@example"},"confidence":"unverified"}

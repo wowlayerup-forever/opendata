@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/recipes.schema.json",
+  "title": "client/recipes",
+  "description": "Profession recipes: what a recipe spell creates and consumes, and the skill brackets. Where the recipe is learned (trainer, drop, vendor, quest) is a world fact unless the client ships it.",
+  "x-primary-key": [
+    "recipe_spell_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/client_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "recipe_spell_id",
+    "name",
+    "skill_id",
+    "skill_required",
+    "creates",
+    "reagents"
+  ],
+  "properties": {
+    "recipe_spell_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "name": {
+      "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "skill_id": {
+      "$ref": "../defs.schema.json#/$defs/id",
+      "description": "SkillLine id (alchemy, blacksmithing, ...)."
+    },
+    "skill_required": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skill_yellow": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skill_green": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skill_gray": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "creates": {
+      "$ref": "../defs.schema.json#/$defs/item_count"
+    },
+    "creates_min": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "creates_max": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reagents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "../defs.schema.json#/$defs/item_count"
+      }
+    },
+    "tool_item_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "../defs.schema.json#/$defs/id"
+      }
+    },
+    "taught_by_item_id": {
+      "$ref": "../defs.schema.json#/$defs/id",
+      "description": "The recipe/pattern/schematic item that teaches this spell, if any."
+    },
+    "cast_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

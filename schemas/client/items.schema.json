@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/items.schema.json",
+  "title": "client/items",
+  "description": "Item templates as shipped in the client build. One row per item_id per build.",
+  "x-primary-key": [
+    "item_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/client_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "item_id",
+    "name",
+    "quality",
+    "item_class",
+    "item_subclass",
+    "binding",
+    "stats"
+  ],
+  "properties": {
+    "item_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "name": {
+      "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "quality": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7,
+      "description": "0 poor, 1 common, 2 uncommon, 3 rare, 4 epic, 5 legendary, 6 artifact, 7 heirloom"
+    },
+    "item_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "required_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "item_class": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "item_subclass": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "inventory_type": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Equip slot enum from the client."
+    },
+    "binding": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "0 none, 1 on pickup, 2 on equip, 3 on use, 4 quest"
+    },
+    "stackable": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "stats": {
+      "type": "object",
+      "description": "Keyed by stat name as the client exposes it (stamina, intellect, spirit, agility, strength, spell_power, attack_power, crit, hit, ...). Values are integers.",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "armor": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "damage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "speed_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "school": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "spells": {
+      "type": "array",
+      "description": "Equip, use and proc effects by spell_id.",
+      "items": {
+        "type": "object",
+        "required": [
+          "spell_id",
+          "trigger"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "spell_id": {
+            "$ref": "../defs.schema.json#/$defs/id"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "use",
+              "equip",
+              "chance_on_hit",
+              "soulstone",
+              "learn"
+            ]
+          }
+        }
+      }
+    },
+    "allowable_class_mask": {
+      "type": "integer"
+    },
+    "allowable_race_mask": {
+      "type": "integer"
+    },
+    "required_skill": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "required_skill_rank": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sell_price": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Copper."
+    },
+    "buy_price": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Copper. Vendor list price before reputation."
+    },
+    "max_durability": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "set_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "display_id": {
+      "type": "integer"
+    }
+  }
+}

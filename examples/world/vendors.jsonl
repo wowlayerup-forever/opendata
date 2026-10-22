@@ -1,0 +1,1 @@
+{"npc_id":400002,"item_id":100004,"price":400,"limited_stock":1,"n":7,"windows":22,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}

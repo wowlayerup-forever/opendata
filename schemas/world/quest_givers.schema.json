@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/world/quest_givers.schema.json",
+  "title": "world/quest_givers",
+  "description": "Which NPC, object or item starts and ends a quest, as observed at accept and turn-in.",
+  "x-primary-key": [
+    "quest_id",
+    "role",
+    "holder_kind",
+    "holder_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/world_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "quest_id",
+    "role",
+    "holder_kind",
+    "holder_id",
+    "n"
+  ],
+  "properties": {
+    "quest_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "start",
+        "end"
+      ]
+    },
+    "holder_kind": {
+      "type": "string",
+      "enum": [
+        "npc",
+        "object",
+        "item"
+      ]
+    },
+    "holder_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "coords": {
+      "$ref": "../defs.schema.json#/$defs/coords"
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Accept or turn-in events observed."
+    }
+  }
+}

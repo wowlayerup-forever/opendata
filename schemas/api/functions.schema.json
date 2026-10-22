@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/api/functions.schema.json",
+  "title": "api/functions",
+  "description": "Addon API functions present in a client build, from Blizzard_APIDocumentation and the global environment. Files live at data/api/<build>/functions.jsonl.",
+  "x-primary-key": [
+    "name",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/api_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$",
+      "description": "Fully qualified, for example C_Container.GetContainerItemInfo or GetItemInfo."
+    },
+    "namespace": {
+      "type": "string"
+    },
+    "arguments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nilable": {
+            "type": "boolean"
+          },
+          "default": {}
+        }
+      }
+    },
+    "returns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nilable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "documented": {
+      "type": "boolean",
+      "description": "True if present in Blizzard_APIDocumentation; false if only found in the global environment."
+    },
+    "protected": {
+      "type": "boolean"
+    },
+    "documentation": {
+      "type": "string"
+    }
+  }
+}

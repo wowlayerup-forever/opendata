@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/npcs.schema.json",
+  "title": "client/npcs",
+  "description": "Creature templates the client knows about. Level range, type and classification are client data; where it spawns and what it drops are world facts.",
+  "x-primary-key": [
+    "npc_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/client_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "npc_id",
+    "name"
+  ],
+  "properties": {
+    "npc_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "name": {
+      "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "subname": {
+      "type": "string"
+    },
+    "min_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "creature_type": {
+      "type": "integer",
+      "description": "1 beast, 2 dragonkin, 3 demon, 4 elemental, 5 giant, 6 undead, 7 humanoid, 8 critter, 9 mechanical, 10 not specified, 11 totem"
+    },
+    "classification": {
+      "type": "integer",
+      "description": "0 normal, 1 elite, 2 rare elite, 3 boss, 4 rare"
+    },
+    "faction_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "npc_flags": {
+      "type": "integer",
+      "description": "Bitmask: vendor, trainer, questgiver, innkeeper, banker, ..."
+    },
+    "skinning_loot": {
+      "type": "boolean"
+    },
+    "display_ids": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    }
+  }
+}

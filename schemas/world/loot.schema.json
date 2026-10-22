@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/world/loot.schema.json",
+  "title": "world/loot",
+  "description": "What a creature, object or container yields. Counts, never rates. A rate is drops/kills and is computed by the consumer.",
+  "x-primary-key": [
+    "holder_kind",
+    "holder_id",
+    "item_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/world_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "holder_kind",
+    "holder_id",
+    "item_id",
+    "drops",
+    "kills"
+  ],
+  "properties": {
+    "holder_kind": {
+      "type": "string",
+      "enum": [
+        "npc",
+        "object",
+        "item",
+        "fishing",
+        "skinning",
+        "pickpocket"
+      ]
+    },
+    "holder_id": {
+      "$ref": "../defs.schema.json#/$defs/id",
+      "description": "npc_id, object_id, item_id (container), or zone_id for fishing."
+    },
+    "item_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "drops": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of times the item was seen in the loot window."
+    },
+    "kills": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of loot windows observed for the holder. 0 is allowed only for emu_seed and manual rows."
+    },
+    "count_min": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "count_max": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "heroic"
+      ],
+      "description": "Omit when not applicable."
+    },
+    "emu_rate_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Only for emu_seed rows: the emulator's stored rate, kept for comparison. Not a Forever observation."
+    }
+  },
+  "if": {
+    "properties": {
+      "source": {
+        "properties": {
+          "kind": {
+            "const": "observation"
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "kills": {
+        "minimum": 1
+      }
+    }
+  }
+}

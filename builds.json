@@ -1,0 +1,12 @@
+{
+  "$comment": "Registry of client builds this dataset knows about. Every build_first_seen / build_last_seen value in data/ must appear here. The first real entry is added when the first Forever build is extracted.",
+  "builds": [
+    {
+      "build": "0.0.0.1",
+      "product": "placeholder",
+      "status": "placeholder",
+      "released": null,
+      "notes": "Used only by examples/ so the validator and build tooling can run before the first real extraction. Never used in data/."
+    }
+  ]
+}

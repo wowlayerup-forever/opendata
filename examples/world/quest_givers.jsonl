@@ -1,0 +1,2 @@
+{"quest_id":200001,"role":"end","holder_kind":"npc","holder_id":400002,"n":38,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}
+{"quest_id":200001,"role":"start","holder_kind":"npc","holder_id":400002,"coords":{"map_id":1,"zone_id":40,"x":56.1,"y":47.5},"n":40,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}

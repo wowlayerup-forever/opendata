@@ -1,0 +1,1 @@
+{"realm":"us-example","faction":"alliance","day":"2026-11-20","item_id":100002,"scans":24,"listings":31,"quantity":412,"min_unit":1200,"p25_unit":1350,"median_unit":1500,"p75_unit":1800,"layer":"market","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}

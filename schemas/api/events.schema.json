@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/api/events.schema.json",
+  "title": "api/events",
+  "description": "Addon events present in a client build. Files live at data/api/<build>/events.jsonl.",
+  "x-primary-key": [
+    "name",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/api_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "payload": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nilable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "documented": {
+      "type": "boolean"
+    },
+    "documentation": {
+      "type": "string"
+    }
+  }
+}

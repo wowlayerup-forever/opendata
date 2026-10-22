@@ -1,0 +1,27 @@
+# wowlayerup-forever/opendata
+
+> Open, versioned game data for World of Warcraft: Forever, keyed by Blizzard IDs. Four layers: client (exact, datamined), world (observed, with sample sizes), market (AH aggregates), derived (attributed opinion). Licensed CC BY 4.0 (data) and MIT (code).
+
+Read CONVENTIONS.md before answering from this data. The rules that matter most for an agent:
+
+- Key everything by ID (item_id, quest_id, npc_id, spell_id). Names are display only and may be ambiguous. If you only have a name, resolve it to an ID in data/client/ first and say so.
+- Check the `layer` and `confidence` fields before stating something as fact. `client` rows are exact for their build. `world` rows with `confidence: unverified` are hypotheses from a Classic Era emulator, not Forever observations. `derived` rows are opinion.
+- Drop rates are drops/kills, not a stored percentage. Quote the counts.
+- Cite the dataset version and the row: "opendata 2026.11.1, world/loot npc 92341 item 92831 (verified, 47/1203)".
+- Do not invent IDs. An ID absent from data/client/ for the current build does not exist on Forever.
+- For addon or WeakAura code, check data/api/<build>/functions.jsonl before using an API function. If it is not listed for the build, assume it does not exist.
+- Never write to data/client/, data/world/ or data/market/ as an agent. You may author data/derived/ records; set generator.kind to "agent" and name the model.
+
+## Files
+
+- [README.md](README.md): overview and how to use the release files
+- [CONVENTIONS.md](CONVENTIONS.md): the contract. Layers, IDs, provenance, confidence, versioning, citation
+- [CONTRIBUTING.md](CONTRIBUTING.md): how data gets in
+- [builds.json](builds.json): known Forever client builds
+- [schemas/](schemas/): JSON Schema per table
+- [data/](data/): JSONL per layer and table
+- [examples/](examples/): sample rows for each table, validated in CI
+
+## Release files
+
+Each tagged release includes opendata-<version>.sqlite (all tables) and Parquet per table. Table names in SQLite are <layer>_<table>, for example client_items, world_loot, derived_bis.

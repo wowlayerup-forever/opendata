@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/defs.schema.json",
+  "title": "Shared definitions",
+  "$defs": {
+    "build": {
+      "type": "string",
+      "description": "Full four-part client version string. Must be listed in builds.json.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "A Blizzard entity ID. Never invented, never renumbered."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "enUS display name. For readability only; the ID is the key."
+    },
+    "source": {
+      "type": "object",
+      "required": ["kind", "ref"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["datamine", "observation", "emu_seed", "manual"]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "datamine: DB2 table name. observation: reconciler run id. emu_seed: database and commit. manual: PR number or contributor handle."
+        }
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["exact", "verified", "unverified", "disputed"]
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Fields every client, world, market and api row carries.",
+      "required": ["layer", "source", "build_first_seen", "build_last_seen", "confidence"],
+      "properties": {
+        "layer": { "type": "string", "enum": ["client", "world", "market", "api"] },
+        "source": { "$ref": "#/$defs/source" },
+        "build_first_seen": { "$ref": "#/$defs/build" },
+        "build_last_seen": { "$ref": "#/$defs/build" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "superseded_by": { "$ref": "#/$defs/id" }
+      }
+    },
+    "client_provenance": {
+      "allOf": [
+        { "$ref": "#/$defs/provenance" },
+        {
+          "properties": {
+            "layer": { "const": "client" },
+            "source": { "properties": { "kind": { "const": "datamine" } } },
+            "confidence": { "const": "exact" }
+          }
+        }
+      ]
+    },
+    "world_provenance": {
+      "allOf": [
+        { "$ref": "#/$defs/provenance" },
+        {
+          "properties": {
+            "layer": { "const": "world" },
+            "source": { "properties": { "kind": { "enum": ["observation", "emu_seed", "manual"] } } },
+            "confidence": { "enum": ["verified", "unverified", "disputed"] }
+          }
+        }
+      ]
+    },
+    "market_provenance": {
+      "allOf": [
+        { "$ref": "#/$defs/provenance" },
+        {
+          "properties": {
+            "layer": { "const": "market" },
+            "source": { "properties": { "kind": { "const": "observation" } } },
+            "confidence": { "const": "verified" }
+          }
+        }
+      ]
+    },
+    "api_provenance": {
+      "allOf": [
+        { "$ref": "#/$defs/provenance" },
+        {
+          "properties": {
+            "layer": { "const": "api" },
+            "source": { "properties": { "kind": { "const": "datamine" } } },
+            "confidence": { "const": "exact" }
+          }
+        }
+      ]
+    },
+    "derived_header": {
+      "type": "object",
+      "description": "Fields every derived record carries. Opinion, attributed and reproducible.",
+      "required": ["layer", "id", "title", "author", "generator", "dataset_version", "criteria", "created"],
+      "properties": {
+        "layer": { "const": "derived" },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{2,63}$",
+          "description": "Stable slug for this record."
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "author": {
+          "type": "string",
+          "pattern": "^(github|discord|handle):.+$",
+          "description": "Who is responsible for this record, for example github:someone."
+        },
+        "generator": {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "type": "string", "enum": ["human", "agent"] },
+            "model": { "type": "string", "description": "Required when kind is agent." },
+            "prompt_ref": { "type": "string" }
+          },
+          "if": { "properties": { "kind": { "const": "agent" } } },
+          "then": { "required": ["model"] }
+        },
+        "dataset_version": {
+          "type": "string",
+          "pattern": "^[0-9]{4}\\.[0-9]{1,2}\\.[0-9]+$",
+          "description": "The opendata release this record was computed against."
+        },
+        "build": { "$ref": "#/$defs/build" },
+        "criteria": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plain-language statement of the constraints and goals the record was produced under."
+        },
+        "market_snapshot": {
+          "type": "string",
+          "description": "Required if the record depends on prices. realm-faction-timestamp."
+        },
+        "created": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
+      }
+    },
+    "coords": {
+      "type": "object",
+      "required": ["map_id", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "map_id": { "$ref": "#/$defs/id" },
+        "zone_id": { "$ref": "#/$defs/id" },
+        "x": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of zone width, as the addon map API reports it." },
+        "y": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "item_count": {
+      "type": "object",
+      "required": ["item_id", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "item_id": { "$ref": "#/$defs/id" },
+        "count": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

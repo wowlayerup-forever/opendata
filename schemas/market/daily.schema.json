@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/market/daily.schema.json",
+  "title": "market/daily",
+  "description": "Daily per-item auction house aggregates per realm and faction. Raw scans are not stored in git.",
+  "x-primary-key": [
+    "realm",
+    "faction",
+    "day",
+    "item_id"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/market_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "realm",
+    "faction",
+    "day",
+    "item_id",
+    "scans",
+    "listings",
+    "quantity",
+    "min_unit",
+    "median_unit"
+  ],
+  "properties": {
+    "realm": {
+      "type": "string",
+      "pattern": "^[a-z]{2}-[a-z0-9-]+$",
+      "description": "Region-slug, for example us-nightsong."
+    },
+    "faction": {
+      "type": "string",
+      "enum": [
+        "alliance",
+        "horde",
+        "neutral"
+      ]
+    },
+    "day": {
+      "type": "string",
+      "format": "date"
+    },
+    "item_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "scans": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of scans aggregated into this row."
+    },
+    "listings": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Mean auctions per scan."
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Mean units listed per scan."
+    },
+    "min_unit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Copper. Min buyout per unit across the day's scans."
+    },
+    "p25_unit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "median_unit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "p75_unit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sold_estimate": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Units that disappeared before expiry, if the scan cadence supports estimating it. Omit otherwise."
+    }
+  }
+}

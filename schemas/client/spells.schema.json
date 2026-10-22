@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/spells.schema.json",
+  "title": "client/spells",
+  "description": "Spells, kept minimal: enough to resolve item effects, recipes and class abilities by ID. Full effect tables are out of scope for v1.",
+  "x-primary-key": [
+    "spell_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/client_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "spell_id",
+    "name"
+  ],
+  "properties": {
+    "spell_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "name": {
+      "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "rank": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "description": "Tooltip text with the client's $-variables left as-is."
+    },
+    "school": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "spell_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "class_mask": {
+      "type": "integer"
+    },
+    "skill_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "icon": {
+      "type": "string"
+    }
+  }
+}

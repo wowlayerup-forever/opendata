@@ -1,0 +1,1 @@
+{"name":"GetItemInfo","arguments":[{"name":"item","type":"string"}],"returns":[{"name":"itemName","type":"string","nilable":true},{"name":"itemLink","type":"string","nilable":true}],"documented":true,"protected":false,"layer":"api","source":{"kind":"datamine","ref":"Blizzard_APIDocumentation"},"build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","confidence":"exact"}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/world/spawns.schema.json",
+  "title": "world/spawns",
+  "description": "Where creatures and objects have been seen. One row per holder per rounded position cluster.",
+  "x-primary-key": [
+    "holder_kind",
+    "holder_id",
+    "coords.map_id",
+    "coords.x",
+    "coords.y",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/world_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "holder_kind",
+    "holder_id",
+    "coords",
+    "n"
+  ],
+  "properties": {
+    "holder_kind": {
+      "type": "string",
+      "enum": [
+        "npc",
+        "object"
+      ]
+    },
+    "holder_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "coords": {
+      "$ref": "../defs.schema.json#/$defs/coords"
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sightings in this cluster."
+    },
+    "respawn_s_min": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "respawn_s_max": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "layer_hint": {
+      "type": "string",
+      "description": "Free text if the sighting is believed layer-specific."
+    }
+  }
+}

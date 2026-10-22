@@ -1,0 +1,1 @@
+{"name":"LOOT_OPENED","payload":[{"name":"autoLoot","type":"bool"},{"name":"isFromItem","type":"bool"}],"documented":true,"layer":"api","source":{"kind":"datamine","ref":"Blizzard_APIDocumentation"},"build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","confidence":"exact"}

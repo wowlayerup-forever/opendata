@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/derived/bis.schema.json",
+  "title": "derived/bis",
+  "description": "A gear list for a class/spec/level bracket. Opinion. Every entry references item IDs; the sources it cites are world/loot, world/vendors, world/quest_givers or client/recipes rows.",
+  "x-primary-key": [
+    "id"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/derived_header"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "class_id",
+    "level_min",
+    "level_max",
+    "entries"
+  ],
+  "properties": {
+    "class_id": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "spec": {
+      "type": "string"
+    },
+    "level_min": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "level_max": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "stat_weights": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "slot",
+          "rank",
+          "item_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "slot": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "item_id": {
+            "$ref": "../defs.schema.json#/$defs/id"
+          },
+          "score": {
+            "type": "number"
+          },
+          "obtain": {
+            "type": "string",
+            "enum": [
+              "quest",
+              "drop",
+              "vendor",
+              "craft",
+              "auction",
+              "unknown"
+            ],
+            "description": "Summary of how the author expects it to be obtained; the fact is in the world tables."
+          },
+          "source_ref": {
+            "type": "string",
+            "description": "Row citation, for example world/loot npc 1234 item 5678."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

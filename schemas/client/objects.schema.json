@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/objects.schema.json",
+  "title": "client/objects",
+  "description": "Game object templates: herb and ore nodes, chests, quest objects, doors.",
+  "x-primary-key": [
+    "object_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/client_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "object_id",
+    "name",
+    "object_type"
+  ],
+  "properties": {
+    "object_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "name": {
+      "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "object_type": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "required_skill_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "required_skill_rank": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "display_id": {
+      "type": "integer"
+    }
+  }
+}

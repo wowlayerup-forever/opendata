@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/world/recipe_sources.schema.json",
+  "title": "world/recipe_sources",
+  "description": "Where a recipe is learned: a trainer, a vendor-sold or dropped recipe item, or a quest. Drops of recipe items are in world/loot; this table links the recipe to the trainer or quest.",
+  "x-primary-key": [
+    "recipe_spell_id",
+    "source_kind",
+    "source_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/world_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "recipe_spell_id",
+    "source_kind",
+    "source_id",
+    "n"
+  ],
+  "properties": {
+    "recipe_spell_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": [
+        "trainer",
+        "quest",
+        "item"
+      ]
+    },
+    "source_id": {
+      "$ref": "../defs.schema.json#/$defs/id",
+      "description": "npc_id for trainer, quest_id for quest, item_id for a recipe item."
+    },
+    "cost": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Copper, trainer price if applicable."
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

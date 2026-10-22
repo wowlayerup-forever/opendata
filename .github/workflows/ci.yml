@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/requirements.txt
+      - name: Validate data/ and examples/ against schemas and conventions
+        run: python tools/validate.py
+      - name: Build SQLite from data/
+        run: python tools/build_sqlite.py --version "ci-${GITHUB_SHA::8}"
+      - name: Build SQLite from examples/ (smoke test of the builder)
+        run: python tools/build_sqlite.py --root examples --out dist/examples.sqlite --version examples
+      - name: Check the built file opens and every table exists
+        run: |
+          python - <<'PY'
+          import sqlite3, glob, pathlib
+          con = sqlite3.connect("dist/opendata.sqlite")
+          have = {r[0] for r in con.execute("select name from sqlite_master where type='table'")}
+          want = {str(pathlib.Path(p).relative_to("schemas")).replace("/", "_")[:-len(".schema.json")]
+                  for p in glob.glob("schemas/*/*.schema.json")}
+          missing = want - have
+          assert not missing, f"tables missing from build: {missing}"
+          print(f"ok: {len(want)} tables present")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opendata-sqlite
+          path: dist/*.sqlite
+          retention-days: 7

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/world/vendors.schema.json",
+  "title": "world/vendors",
+  "description": "What an NPC sells, as observed in the merchant window.",
+  "x-primary-key": [
+    "npc_id",
+    "item_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/world_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "npc_id",
+    "item_id",
+    "n"
+  ],
+  "properties": {
+    "npc_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "item_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "price": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Copper, as shown at neutral reputation if known."
+    },
+    "limited_stock": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Max stock shown for limited items. Omit for unlimited."
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Merchant windows observed containing this item."
+    },
+    "windows": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Merchant windows observed for this NPC in total; lets consumers see how often a limited item was in stock."
+    },
+    "extended_cost": {
+      "type": "array",
+      "description": "Non-gold prices (reputation items, tokens).",
+      "items": {
+        "$ref": "../defs.schema.json#/$defs/item_count"
+      }
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/quests.schema.json",
+  "title": "client/quests",
+  "description": "Quest templates as shipped in the client build. Who gives the quest is a world fact and lives in world/quest_givers.",
+  "x-primary-key": [
+    "quest_id",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/client_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "quest_id",
+    "name",
+    "quest_level",
+    "min_level",
+    "rewards"
+  ],
+  "properties": {
+    "quest_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "name": {
+      "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "quest_level": {
+      "type": "integer",
+      "minimum": -1
+    },
+    "min_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "type": {
+      "type": "integer",
+      "description": "Client quest type enum (0 normal, 1 group, 41 pvp, 62 raid, 81 dungeon, 83 legendary, 84 escort, 85 heroic...)."
+    },
+    "flags": {
+      "type": "integer"
+    },
+    "race_mask": {
+      "type": "integer",
+      "description": "0 means all races."
+    },
+    "class_mask": {
+      "type": "integer",
+      "description": "0 means all classes."
+    },
+    "zone_or_sort": {
+      "type": "integer"
+    },
+    "prev_quest_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "next_quest_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "exclusive_group": {
+      "type": "integer"
+    },
+    "repeatable": {
+      "type": "boolean"
+    },
+    "objectives": {
+      "type": "string",
+      "description": "Objective text as shipped."
+    },
+    "objective_items": {
+      "type": "array",
+      "items": {
+        "$ref": "../defs.schema.json#/$defs/item_count"
+      }
+    },
+    "objective_npcs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "npc_id",
+          "count"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "npc_id": {
+            "$ref": "../defs.schema.json#/$defs/id"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "rewards": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "xp": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "At quest level, before any multiplier."
+        },
+        "money": {
+          "type": "integer",
+          "description": "Copper. Negative means required payment."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "../defs.schema.json#/$defs/item_count"
+          }
+        },
+        "choice_items": {
+          "type": "array",
+          "items": {
+            "$ref": "../defs.schema.json#/$defs/item_count"
+          }
+        },
+        "spell_id": {
+          "$ref": "../defs.schema.json#/$defs/id"
+        },
+        "reputation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "faction_id",
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "faction_id": {
+                "$ref": "../defs.schema.json#/$defs/id"
+              },
+              "value": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

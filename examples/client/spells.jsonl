@@ -1,0 +1,2 @@
+{"spell_id":300001,"name":"Example Potion Effect","description":"Restores $s1 mana.","school":0,"spell_level":5,"layer":"client","source":{"kind":"datamine","ref":"Spell"},"build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","confidence":"exact"}
+{"spell_id":300002,"name":"Example Potion","description":"Teaches you how to make an Example Potion.","school":0,"skill_id":171,"layer":"client","source":{"kind":"datamine","ref":"Spell"},"build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","confidence":"exact"}

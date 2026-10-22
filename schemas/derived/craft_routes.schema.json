@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/derived/craft_routes.schema.json",
+  "title": "derived/craft_routes",
+  "description": "A profession leveling route: ordered recipe steps with counts. Opinion, and price-dependent, so market_snapshot is required.",
+  "x-primary-key": [
+    "id"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/derived_header"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "skill_id",
+    "skill_from",
+    "skill_to",
+    "market_snapshot",
+    "steps"
+  ],
+  "properties": {
+    "skill_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "skill_from": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skill_to": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "faction": {
+      "type": "string",
+      "enum": [
+        "alliance",
+        "horde"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "order",
+          "recipe_spell_id",
+          "crafts",
+          "skill_at_start"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "recipe_spell_id": {
+            "$ref": "../defs.schema.json#/$defs/id"
+          },
+          "crafts": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "skill_at_start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expected_skill_gain": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cost_estimate_copper": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_cost_estimate_copper": {
+      "type": "integer"
+    }
+  }
+}
