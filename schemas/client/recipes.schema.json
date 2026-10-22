@@ -32,6 +32,14 @@
       "$ref": "../defs.schema.json#/$defs/id",
       "description": "SkillLine id (alchemy, blacksmithing, ...)."
     },
+    "skill_ids": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "../defs.schema.json#/$defs/id"
+      },
+      "description": "Present only when the recipe spell belongs to more than one SkillLine (for example a recipe shared by tailoring and leatherworking). Lists all of them, ascending; skill_id is the one from the lowest SkillLineAbility row."
+    },
     "skill_required": {
       "type": "integer",
       "minimum": 0

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/client/items.schema.json",
   "title": "client/items",
-  "description": "Item templates as shipped in the client build. One row per item_id per build.",
+  "description": "Item templates as shipped in the client build. One row per item_id per build. Items present in the Item table without an ItemSparse row are emitted as stubs (`sparse: false`): class, subclass, slot and icon only, no name or stats, because the client gets those from hotfixes or the server.",
   "x-primary-key": [
     "item_id",
     "build_last_seen"
@@ -15,12 +15,8 @@
   "type": "object",
   "required": [
     "item_id",
-    "name",
-    "quality",
     "item_class",
-    "item_subclass",
-    "binding",
-    "stats"
+    "item_subclass"
   ],
   "properties": {
     "item_id": {
@@ -28,6 +24,10 @@
     },
     "name": {
       "$ref": "../defs.schema.json#/$defs/name"
+    },
+    "sparse": {
+      "type": "boolean",
+      "description": "false when the build ships an Item row but no ItemSparse row for this id. Such stubs carry no name, quality, binding or stats; do not read their absence as zero. Absent means true."
     },
     "quality": {
       "type": "integer",
@@ -182,5 +182,23 @@
       ],
       "description": "Which budget table the computed armor came from."
     }
+  },
+  "if": {
+    "properties": {
+      "sparse": {
+        "const": false
+      }
+    },
+    "required": [
+      "sparse"
+    ]
+  },
+  "else": {
+    "required": [
+      "name",
+      "quality",
+      "binding",
+      "stats"
+    ]
   }
 }

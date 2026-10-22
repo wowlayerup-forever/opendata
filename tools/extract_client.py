@@ -7,6 +7,7 @@ wago.tools publishes every build's DB2 tables as CSV:
 
 Forever beta builds (1.60.1.x) are published under the product `wow_classic_beta`
 (2026-09, from recordings; re-check with --list-builds since the launch product may differ).
+As of 2026-10-22 wago also lists a `wowf` product (1.60.1.70245, 1.60.1.70532); likely the live one.
 
 Usage:
   python tools/extract_client.py --list-builds
@@ -295,8 +296,26 @@ def extract_items(cache: Path, build: str) -> list[dict]:
         "ItemDamageOneHand", "ItemDamageOneHandCaster", "ItemDamageTwoHand", "ItemDamageTwoHandCaster",
         "ItemDamageRanged", "ItemDamageThrown", "ItemDamageAmmo")}
     armor = {t: by_id(read(cache, build, t)) for t in ("ItemArmorQuality", "ItemArmorTotal", "ItemArmorShield", "ArmorLocation")}
+    spell_ids = {i(r["ID"]) for r in read(cache, build, "SpellName") if r.get("Name_lang")}
 
     out = []
+    dangling_spells = 0
+    # Item rows with no ItemSparse row: the client gets name and stats from hotfixes or the
+    # server, so all we can state is what Item has. Emitted as stubs so references resolve.
+    for item_id, it in items.items():
+        if item_id in sparse:
+            continue
+        row = {
+            "item_id": item_id,
+            "sparse": False,
+            "item_class": i(it.get("ClassID")),
+            "item_subclass": i(it.get("SubclassID")),
+            "inventory_type": i(it.get("InventoryType")),
+        }
+        if i(it.get("IconFileDataID")):
+            row["icon_file_data_id"] = i(it["IconFileDataID"])
+        row.update(prov("Item", build))
+        out.append(row)
     for item_id, sp in sparse.items():
         it = items.get(item_id)
         if it is None:
@@ -334,6 +353,9 @@ def extract_items(cache: Path, build: str) -> list[dict]:
         for x in x_effects.get(item_id, []):
             eff = effects.get(i(x["ItemEffectID"]))
             if eff and i(eff.get("SpellID")) > 0:
+                if i(eff["SpellID"]) not in spell_ids:
+                    dangling_spells += 1  # effect points at a spell this build does not ship; inert
+                    continue
                 spells.append({"spell_id": i(eff["SpellID"]), "trigger": TRIGGER.get(i(eff.get("TriggerType")), "use")})
         if spells:
             row["spells"] = spells
@@ -349,6 +371,8 @@ def extract_items(cache: Path, build: str) -> list[dict]:
             row["description"] = sp["Description_lang"]
         row.update(prov("ItemSparse", build))
         out.append(row)
+    stubs = sum(1 for r in out if r.get("sparse") is False)
+    print(f"  items: {stubs} stubs without ItemSparse, {dangling_spells} effects dropped for missing spells")
     return out
 
 
@@ -398,9 +422,15 @@ def extract_spells_and_recipes(cache: Path, build: str) -> tuple[list[dict], lis
         row.update(prov("SpellName", build))
         spells_out.append(row)
 
+    # A recipe spell can sit under several SkillLines (shared tailoring/leatherworking recipes) or
+    # appear twice under the same one. One row per spell; the lowest SkillLineAbility row wins.
+    sla_by_spell: dict[int, list[dict]] = defaultdict(list)
+    for r in sorted(sla, key=lambda r: i(r["ID"])):
+        sla_by_spell[i(r["Spell"])].append(r)
+
     recipes_out = []
-    for r in sla:
-        sid = i(r["Spell"])
+    for sid, sla_rows in sla_by_spell.items():
+        r = sla_rows[0]
         create = next((e for e in effects.get(sid, []) if i(e.get("Effect")) == 24 and i(e.get("EffectItemType")) > 0), None)
         if create is None:
             continue
@@ -424,6 +454,9 @@ def extract_spells_and_recipes(cache: Path, build: str) -> tuple[list[dict], lis
             "creates": {"item_id": i(create["EffectItemType"]), "count": count},
             "reagents": reag,
         }
+        skills = sorted({i(x["SkillLine"]) for x in sla_rows})
+        if len(skills) > 1:
+            row["skill_ids"] = skills
         tt = totems.get(sid)
         if tt:
             tools = [i(tt.get(f"Totem_{k}")) for k in range(2) if i(tt.get(f"Totem_{k}")) > 0]
