@@ -36,6 +36,10 @@ examples/              placeholder build 0.0.0.1, invented IDs, validated in CI,
 tools/validate.py      schema, build registry, PK uniqueness, stray fields, cross-table ID refs
 tools/build_sqlite.py  dist/opendata.sqlite (+ --parquet)
 tools/extract_client.py  wago.tools DB2 -> data/client/{items,spells,recipes,npcs,objects}
+tools/addons/APISurface/ in-game addon: dumps functions, C_ namespaces, documented events to SavedVariables
+tools/import_api.py    APISurface SavedVariables -> data/api/<build>/{functions,events}.jsonl
+tools/api_diff.py      diff the API surface of two builds
+tools/savedvariables.py  SavedVariables (Lua subset) parser, shared by the importers
 .github/workflows/     ci (PRs), release (tags YYYY.MM.N), extract (workflow_dispatch -> PR)
 ```
 

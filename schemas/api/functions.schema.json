@@ -41,6 +41,14 @@
           "type": {
             "type": "string"
           },
+          "inner_type": {
+            "type": "string",
+            "description": "Element type when type is table (InnerType in Blizzard_APIDocumentation)."
+          },
+          "mixin": {
+            "type": "string",
+            "description": "Mixin the value is created from, for example ItemLocationMixin."
+          },
           "nilable": {
             "type": "boolean"
           },
@@ -64,6 +72,14 @@
           "type": {
             "type": "string"
           },
+          "inner_type": {
+            "type": "string",
+            "description": "Element type when type is table (InnerType in Blizzard_APIDocumentation)."
+          },
+          "mixin": {
+            "type": "string",
+            "description": "Mixin the value is created from, for example ItemLocationMixin."
+          },
           "nilable": {
             "type": "boolean"
           }
@@ -73,6 +89,10 @@
     "documented": {
       "type": "boolean",
       "description": "True if present in Blizzard_APIDocumentation; false if only found in the global environment."
+    },
+    "present": {
+      "type": "boolean",
+      "description": "False when Blizzard_APIDocumentation describes the function but it was not callable in the global environment at login (documented for another flavor, or not implemented in this build). Absent means true."
     },
     "protected": {
       "type": "boolean"
