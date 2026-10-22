@@ -37,6 +37,14 @@
           "type": {
             "type": "string"
           },
+          "inner_type": {
+            "type": "string",
+            "description": "Element type when type is table (InnerType in Blizzard_APIDocumentation)."
+          },
+          "mixin": {
+            "type": "string",
+            "description": "Mixin the value is created from, for example ItemLocationMixin."
+          },
           "nilable": {
             "type": "boolean"
           }
@@ -44,7 +52,8 @@
       }
     },
     "documented": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Always true today: events are only known from Blizzard_APIDocumentation, since the client has no way to list events."
     },
     "documentation": {
       "type": "string"

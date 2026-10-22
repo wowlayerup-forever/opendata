@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: APISurface
+## Notes: Dumps the addon API surface (functions, C_ namespaces, documented events) to SavedVariables for the opendata dataset.
+## Author: wowlayerup-forever
+## Version: 1
+## SavedVariables: APISurfaceDB
+
+APISurface.lua
