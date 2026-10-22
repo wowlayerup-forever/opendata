@@ -24,6 +24,7 @@ Rules that follow from this:
 - Every entity is keyed by its Blizzard ID: `item_id`, `spell_id`, `quest_id`, `npc_id`, `object_id`, `map_id`, `zone_id`, `recipe_spell_id`.
 - A record that references an entity references it by ID. Names may be included for readability and are always in the `name` field, always enUS.
 - An ID that does not exist in `data/client/` for the current build is a validation error anywhere it appears. The validator enforces this once `data/client/` is populated.
+- Exception: `client/quests` and most of `client/npcs` come from the client cache and only hold what some player has seen, so a reference to a quest or NPC that is not there yet is a warning, not an error. It still has to be a real ID from the client or an observation, never a guess.
 - IDs are never reused and never renumbered by us. If Forever renumbers something, the old ID gets a `superseded_by` row, it is not edited in place.
 
 ## 3. Every row carries provenance

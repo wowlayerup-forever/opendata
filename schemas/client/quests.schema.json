@@ -73,6 +73,10 @@
       "type": "string",
       "description": "Objective text as shipped."
     },
+    "description": {
+      "type": "string",
+      "description": "Quest text as shipped (the story the giver tells). Client tokens such as $b, $n and $c are kept verbatim."
+    },
     "objective_items": {
       "type": "array",
       "items": {

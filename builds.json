@@ -9,6 +9,13 @@
       "notes": "Used only by examples/ so the validator and build tooling can run before the first real extraction. Never used in data/."
     },
     {
+      "build": "1.60.1.70205",
+      "product": "wow_classic_beta",
+      "status": "beta",
+      "released": "2026-10-03",
+      "notes": "Forever beta build. Registered because the owner's WDB cache (questcache.wdb, creaturecache.wdb) was written by this client; no DB2 extraction for it. Interface number not recorded."
+    },
+    {
       "build": "1.60.1.70374",
       "product": "wow_classic_beta",
       "status": "beta",
