@@ -578,7 +578,17 @@ def main() -> int:
         if "recipes" in want:
             write_jsonl(out / "recipes.jsonl", recipes, "recipe_spell_id")
     if "npcs" in want:
-        write_jsonl(out / "npcs.jsonl", extract_npcs(cache, args.build), "npc_id")
+        npcs = extract_npcs(cache, args.build)
+        # npcs.jsonl also holds creatures tools/import_cache.py read from creaturecache.wdb; keep
+        # those, except where DB2 now has the creature.
+        own = {r["npc_id"] for r in npcs}
+        path = out / "npcs.jsonl"
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                kept = [r for r in map(json.loads, filter(str.strip, f))
+                        if r.get("source", {}).get("kind") != "datamine" and r["npc_id"] not in own]
+            npcs += kept
+        write_jsonl(path, npcs, "npc_id")
     if "objects" in want:
         write_jsonl(out / "objects.jsonl", extract_objects(cache, args.build), "object_id")
     print("done. Run tools/validate.py next.")

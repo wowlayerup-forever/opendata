@@ -7,7 +7,9 @@ Checks, per root (data/ and examples/):
   3. primary keys (schema x-primary-key) are unique within a file, and files are sorted by them
   4. api/<build>/ rows carry that build
   5. IDs referenced from world/ and derived/ rows exist in the root's client/ tables
-     (skipped for a client table that is empty in that root, so an empty data/ passes)
+     (skipped for a client table that is empty in that root, so an empty data/ passes).
+     quests and npcs are fed from the client cache and partial by design, so a missing
+     reference into them is a warning.
 
 Exit status 1 on any error. Warnings do not fail the run.
 """
@@ -42,6 +44,7 @@ ID_FIELDS = {
     "next_quest_id": "quests",
 }
 KIND_TABLE = {"npc": "npcs", "object": "objects", "item": "items", "quest": "quests", "trainer": "npcs"}
+PARTIAL_TABLES = {"quests", "npcs"}  # client-cache fed: only what some player has seen
 CLIENT_KEY = {
     "items": "item_id",
     "quests": "quest_id",
@@ -215,7 +218,8 @@ def validate_root(root: Path, registry: Registry, schemas: dict[str, dict], defs
         if not ids:
             continue  # client table empty in this root: nothing to check against yet
         if rid not in ids:
-            rep.error(loc, f"{field} {rid} not found in {root.name}/client/{ctable}")
+            report = rep.warn if ctable in PARTIAL_TABLES else rep.error
+            report(loc, f"{field} {rid} not found in {root.name}/client/{ctable}")
 
 
 def main() -> int:
