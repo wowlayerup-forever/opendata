@@ -10,7 +10,7 @@ The goal is a dataset that any tool, addon author, guide writer, or AI agent (Cl
 
 | Path | What | Trust |
 |---|---|---|
-| `data/client/` | Items, quests, spells, recipes, NPC templates, XP and talent tables, as datamined from the Forever client build | Exact for the build it was extracted from |
+| `data/client/` | Items, spells, recipes, NPC and object templates from the Forever client's DB2 tables; quests and NPC levels from the client cache | Exact for the build it was extracted from; computed fields carry their raw inputs |
 | `data/world/` | Loot, spawns, vendor stock, quest givers. Server-side facts that only player observations can establish | Carries `confidence` and sample size on every row |
 | `data/market/` | Auction house aggregates (daily per-item stats per realm and faction). Raw snapshots are not stored in git | Observed |
 | `data/derived/` | BiS lists, leveling routes, craft routes, talent builds. Opinion, versioned and attributed, referencing IDs from the layers above | Opinion, never fact |
@@ -44,6 +44,23 @@ pip install -r tools/requirements.txt
 python tools/validate.py            # schema + cross-reference checks on data/ and examples/
 python tools/build_sqlite.py        # writes dist/opendata.sqlite from data/
 ```
+
+## Extracting a client build
+
+`tools/extract_client.py` pulls a build's DB2 tables from [wago.tools](https://wago.tools) (cached under `.cache/wago/`) and writes `data/client/{items,spells,recipes,npcs,objects}.jsonl`. The "extract client build" workflow in the Actions tab does the same and opens a PR.
+
+```bash
+python tools/extract_client.py --list-builds                 # which products carry 1.x builds
+python tools/extract_client.py --build 1.60.1.70374 --register
+```
+
+Forever beta builds are published under the wago product `wow_classic_beta`. Known builds are in `builds.json`.
+
+What the extractor does not cover, and why:
+
+- `client/quests` and NPC levels. On the modern engine these are not in DB2; the server sends them and the client caches them in `Cache/WDB/<locale>/questcache.wdb` and `creaturecache.wdb`. A cache importer (`source.kind: client_cache`) is the next tool to write.
+- Item stats, weapon damage and armor are computed from the client's budget tables (`RandPropPoints`, `ItemDamage*`, `ItemArmor*`) using the client's formulas. The raw inputs stay on the row (`stat_budget`, `damage.table`, `armor_source`). Treat the computed numbers as unverified until spot-checked against in-game tooltips.
+- The yellow skill threshold for recipes is not in the client data; green and gray are.
 
 CI runs both on every pull request. A PR that adds an ID not present in the current client build fails.
 

@@ -36,17 +36,15 @@
       "type": "integer",
       "minimum": 0
     },
-    "skill_yellow": {
-      "type": "integer",
-      "minimum": 0
-    },
     "skill_green": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "description": "TrivialSkillLineRankLow: skill at which the recipe turns green."
     },
     "skill_gray": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "description": "TrivialSkillLineRankHigh: skill at which the recipe stops giving skill-ups. The yellow threshold is not in the client data."
     },
     "creates": {
       "$ref": "../defs.schema.json#/$defs/item_count"

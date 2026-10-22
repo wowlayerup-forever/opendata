@@ -1,0 +1,59 @@
+name: extract client build
+
+# Pulls one Forever client build's DB2 tables from wago.tools and opens a PR with data/client/ regenerated.
+# Run it from the Actions tab. wago.tools is community-run: one build at a time, please.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: "Full client version, e.g. 1.60.1.70374 (see wago.tools or `--list-builds`)"
+        required: true
+      product:
+        description: "wago product the build is listed under (wow_classic_beta for the Forever beta)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/requirements.txt
+      - name: Cache wago.tools downloads per build
+        uses: actions/cache@v4
+        with:
+          path: .cache/wago
+          key: wago-${{ inputs.build }}
+      - name: Extract
+        run: |
+          python tools/extract_client.py --build "${{ inputs.build }}" --register \
+            ${{ inputs.product != '' && format('--product {0}', inputs.product) || '' }}
+      - name: Validate
+        run: python tools/validate.py
+      - name: Build SQLite smoke test
+        run: python tools/build_sqlite.py --version "extract-${{ inputs.build }}"
+      - name: Summarize
+        run: |
+          echo "## Extracted ${{ inputs.build }}" >> "$GITHUB_STEP_SUMMARY"
+          for f in data/client/*.jsonl; do echo "- $(basename $f): $(wc -l < $f) rows" >> "$GITHUB_STEP_SUMMARY"; done
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          branch: extract/${{ inputs.build }}
+          title: "client: extract build ${{ inputs.build }}"
+          commit-message: "client: extract build ${{ inputs.build }} from wago.tools"
+          body: |
+            Regenerated `data/client/` from wago.tools for build `${{ inputs.build }}` with `tools/extract_client.py`.
+
+            Before merging, spot-check a few computed values (item stats, weapon damage, armor) against in-game tooltips; the raw budget inputs are on each row. See the extractor's docstring for what is and is not covered.
+          labels: data,client
+          add-paths: |
+            data/client
+            builds.json

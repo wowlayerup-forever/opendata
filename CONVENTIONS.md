@@ -8,7 +8,7 @@ Every record lives in exactly one layer, and the layer is encoded in the directo
 
 | Layer | Directory | What it is | How it is established |
 |---|---|---|---|
-| `client` | `data/client/` | Things the game client ships: items, spells, quests, recipes, NPC templates, XP and talent tables | Datamined from the client build (DB2 tables). Exact. |
+| `client` | `data/client/` | Things the game client has: items, spells, recipes, NPC and object templates from DB2; quest templates and NPC levels from the client cache | Datamined from the client build or read from its cache. Exact. |
 | `world` | `data/world/` | Things only the server knows: who drops what, where things spawn, what vendors sell, who gives a quest | Observed by players in-game, or seeded from a Classic Era emulator DB and marked unverified |
 | `market` | `data/market/` | Auction house prices | Observed by addon scans, aggregated |
 | `derived` | `data/derived/` | BiS lists, routes, builds, craft paths | Written by a person or an agent. Opinion. |
@@ -44,7 +44,8 @@ All records in `client`, `world` and `market` have:
 
 | kind | meaning |
 |---|---|
-| `datamine` | extracted from the client build. `ref` names the DB2 table. |
+| `datamine` | extracted from the client build's DB2 tables. `ref` names the table. |
+| `client_cache` | read from the client's WDB cache (quest and creature templates the server sent to a player's client). Verbatim Blizzard data, but only for what some player has seen. `ref` names the cache file. |
 | `observation` | aggregated from in-game observations by the reconciler. `ref` names the reconciler run. |
 | `emu_seed` | copied from a Classic Era emulator database (VMaNGOS, CMaNGOS). `ref` names the DB and commit. |
 | `manual` | typed in by a person. `ref` is the PR or the contributor handle. |
@@ -53,7 +54,7 @@ All records in `client`, `world` and `market` have:
 
 | value | meaning |
 |---|---|
-| `exact` | from the client build. Only `client` and `api` rows may use it. |
+| `exact` | from the client build or client cache, verbatim. Only `client` and `api` rows may use it. Computed fields (item stats, damage, armor) are derived from exact inputs with the client's formulas and ship with their raw inputs; spot-check them before relying on them. |
 | `verified` | confirmed by in-game observation on Forever, with sample size recorded |
 | `unverified` | plausible (usually `emu_seed` or `manual`) but no Forever observation yet |
 | `disputed` | observations contradict the row. Kept so consumers can see the conflict. |

@@ -1,5 +1,5 @@
 {
-  "$comment": "Registry of client builds this dataset knows about. Every build_first_seen / build_last_seen value in data/ must appear here. The first real entry is added when the first Forever build is extracted.",
+  "$comment": "Registry of client builds this dataset knows about. Every build_first_seen / build_last_seen value in data/ must appear here. `interface` is the TOC Interface number addons declare for that build.",
   "builds": [
     {
       "build": "0.0.0.1",
@@ -7,6 +7,14 @@
       "status": "placeholder",
       "released": null,
       "notes": "Used only by examples/ so the validator and build tooling can run before the first real extraction. Never used in data/."
+    },
+    {
+      "build": "1.60.1.70374",
+      "product": "wow_classic_beta",
+      "status": "beta",
+      "released": "2026-10-12",
+      "interface": 16001,
+      "notes": "Forever beta build listed on warcraft.wiki.gg (GetBuildInfo) as of 2026-10-22. Launch build expected 2026-11-04; register it when it appears on wago.tools (tools/extract_client.py --list-builds)."
     }
   ]
 }

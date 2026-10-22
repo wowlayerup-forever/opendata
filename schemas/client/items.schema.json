@@ -67,7 +67,7 @@
     },
     "stats": {
       "type": "object",
-      "description": "Keyed by stat name as the client exposes it (stamina, intellect, spirit, agility, strength, spell_power, attack_power, crit, hit, ...). Values are integers.",
+      "description": "Keyed by stat name (stamina, intellect, spirit, agility, strength, spell_power, attack_power, ...). Computed from stat_budget and RandPropPoints; see tools/extract_client.py. Values are integers.",
       "additionalProperties": {
         "type": "integer"
       }
@@ -95,6 +95,10 @@
         "school": {
           "type": "integer",
           "minimum": 0
+        },
+        "table": {
+          "type": "string",
+          "description": "Which ItemDamage* table the computed damage came from."
         }
       }
     },
@@ -148,18 +152,35 @@
       "minimum": 0,
       "description": "Copper. Vendor list price before reputation."
     },
-    "max_durability": {
-      "type": "integer",
-      "minimum": 0
-    },
     "set_id": {
       "$ref": "../defs.schema.json#/$defs/id"
     },
-    "icon": {
-      "type": "string"
-    },
     "display_id": {
       "type": "integer"
+    },
+    "icon_file_data_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "FileDataID of the icon; resolve to a name via wago.tools/files."
+    },
+    "description": {
+      "type": "string",
+      "description": "Flavor text, if any."
+    },
+    "stat_budget": {
+      "type": "object",
+      "description": "Raw StatPercentEditor values per stat, as shipped. `stats` is computed from these and RandPropPoints[item_level]; keep both so anyone can recompute.",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "armor_source": {
+      "type": "string",
+      "enum": [
+        "ItemArmorTotal",
+        "ItemArmorShield"
+      ],
+      "description": "Which budget table the computed armor came from."
     }
   }
 }
