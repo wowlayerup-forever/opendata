@@ -52,6 +52,8 @@ The Forever beta closed on 2026-10-23 before the addons could run, so every in-g
 4. **Check (owner, in game).** One caster weapon's damage range, one cloth chest's armor, one item's stats against `data/client/items.jsonl`; one quest's level, XP and money against `data/client/quests.jsonl` and the XP the collector recorded at turn-in. If they match, add a CHANGELOG line and soften the README caveat. If not, debug from the raw inputs on the row (`INV_BUCKET` first).
 5. **Release.** Branch, commit `builds.json` and `data/`, PR, merge, then tag `2026.11.1`; the release workflow builds SQLite + Parquet + SHA256SUMS.
 
+Before launch: `python tests/run_addons.py` (needs `luajit`, installed on the owner's Mac) runs both addons against a mocked client and through the whole pipeline; it is also a CI job. It catches logic, typo and pipeline breaks, not real API differences: the mock encodes our reading of the 1.60 API, so anything it gets wrong only shows up on launch day.
+
 Things to watch on first contact: event payloads that differ in 1.60, an API that is missing, whether the `C_Container.UseContainerItem` hook fires (bag-item loot), and whether herb and ore nodes resolve against `client/objects`.
 
 ### Later, not now

@@ -69,7 +69,15 @@ local function clean(s)
 end
 
 local function newBatchID()
-    return ("%08x%08x%08x"):format(time(), math.random(0, 0x7fffffff), math.random(0, 0x7fffffff))
+    -- unique within this account's SavedVariables even if the clock and the RNG repeat
+    local taken = {}
+    for _, b in ipairs((OpenDataCollectorDB and OpenDataCollectorDB.batches) or {}) do
+        if b.id then taken[b.id] = true end
+    end
+    while true do
+        local id = ("%08x%08x%08x"):format(time(), math.floor(GetTime() * 1000) % 0x7fffffff, math.random(0, 0x7fffffff))
+        if not taken[id] then return id end
+    end
 end
 
 local function startBatch()
@@ -260,10 +268,13 @@ SLASH_OPENDATACOLLECTOR1 = "/odc"
 SlashCmdList.OPENDATACOLLECTOR = function(msg)
     local db = OpenDataCollectorDB or {}
     if msg == "reset" then
+        -- pick the new id while the old ones are still listed, so it cannot repeat one;
+        -- what was uploaded under the old id stays complete
+        local id = batch and newBatchID()
         db.batches = {}
         if batch then
             batch.events = {}
-            batch.id = newBatchID() -- what was uploaded under the old id stays complete
+            batch.id = id
             batch.started = time()
             db.batches[1] = batch
         end

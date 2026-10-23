@@ -21,6 +21,7 @@ An open, versioned game dataset for World of Warcraft: Forever, keyed by Blizzar
 ```bash
 python tools/validate.py                     # must print 0 errors
 python tools/build_sqlite.py                 # must build; every table exists even when empty
+python tests/run_addons.py                   # when tools/addons/ or the pipeline tools change; needs luajit
 ```
 
 If a schema changes: update `examples/`, bump nothing unless a field is removed or its meaning changes (then bump the major version in CONVENTIONS.md and the schema `$id`), and add a CHANGELOG line.
@@ -45,7 +46,8 @@ tools/addons/OpenDataCollector/ in-game observation collector (loot, vendors, qu
 tools/uploader.py      collector SavedVariables -> signed JSON batches in .cache/batches/ (not committed)
 tools/reconcile.py     batches -> data/world/*.jsonl, deterministic
 tools/launch.py        launch-day sequence over the tools above (--dry-run first)
-.github/workflows/     ci (PRs), release (tags YYYY.MM.N), extract (workflow_dispatch -> PR)
+tests/                 addons under LuaJIT against a mocked WoW API (wowmock.lua), through uploader/reconcile/import_api
+.github/workflows/     ci (PRs: validate + addons), release (tags YYYY.MM.N), extract (workflow_dispatch -> PR)
 ```
 
 ## Testing the extractor without network
