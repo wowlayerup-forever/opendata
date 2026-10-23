@@ -40,7 +40,7 @@ tools/addons/APISurface/ in-game addon: dumps functions, C_ namespaces, document
 tools/import_api.py    APISurface SavedVariables -> data/api/<build>/{functions,events}.jsonl
 tools/api_diff.py      diff the API surface of two builds
 tools/savedvariables.py  SavedVariables (Lua subset) parser, shared by the importers
-tools/import_cache.py  client WDB cache -> data/client/quests + cache-only creatures in npcs
+tools/import_cache.py  client WDB cache -> data/client/quests + cache-only creatures and objects in npcs, objects
 tools/addons/OpenDataCollector/ in-game observation collector (loot, vendors, quests, trainers, levels)
 tools/uploader.py      collector SavedVariables -> signed JSON batches in .cache/batches/ (not committed)
 tools/reconcile.py     batches -> data/world/*.jsonl, deterministic

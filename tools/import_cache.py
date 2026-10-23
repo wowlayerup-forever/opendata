@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Import the client's WDB cache into data/client/quests.jsonl and data/client/npcs.jsonl.
+"""Import the client's WDB cache into data/client/{quests,npcs,objects}.jsonl.
 
 On the modern engine quest templates and most creature templates are not in DB2. The server
 sends them when a player meets them and the client caches them verbatim in
-<WoW>/<product dir>/Cache/WDB/<locale>/{questcache,creaturecache}.wdb. This reads those files.
+<WoW>/<product dir>/Cache/WDB/<locale>/{questcache,creaturecache,gameobjectcache}.wdb. This
+reads those files. The GameObjects DB2 only ships decorative objects; every chest, herb and
+ore node in the dataset comes from gameobjectcache.wdb.
 Coverage is only what the owner's characters have seen; that is expected.
 
 Usage:
@@ -40,6 +42,13 @@ not decode to exactly its stored length is skipped and reported, never guessed a
     @+34 + 12k display id, then 48 fixed bytes (quest item count at +8 of those),
     the title, title-alt and cursor-name strings, then 4 bytes per quest item.
 
+  gameobjectcache.wdb, per record:
+    @0 type u32, @4 display id u32, then 7 NUL-terminated strings (name, 3 alternate names,
+    icon, cast bar caption, one unknown), 35 x i32 data, size float, quest item count u8,
+    4 bytes per quest item, 8 more bytes. For chests and nodes (type 3) and goobers (10)
+    data[0] is the Lock id, resolved through Lock, LockType and SkillLine from the wago
+    cache (the cache build's tables if extracted, otherwise the newest extracted build).
+
 Not carried by the cache and left absent: NPC levels, faction and npc flags (unit fields the
 client only sees on a spawned unit), quest XP and reputation amounts (the cache stores
 difficulty indexes into QuestXP and QuestFactionReward, not amounts).
@@ -52,9 +61,11 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 REPO = Path(__file__).resolve().parent.parent
 QUEST_MAGIC = b"TSQW"
 CREATURE_MAGIC = b"BOMW"
+GAMEOBJECT_MAGIC = b"BOGW"
 QUEST_STRING_BITS = [9, 12, 12, 9, 10, 8, 10, 8, 11]
 OBJ_FIXED = 41  # bytes before the description length byte
 OBJ_MONSTER, OBJ_ITEM = 0, 1
@@ -213,6 +224,51 @@ def parse_creature(rid: int, r: bytes) -> dict:
     return row
 
 
+# ───────────────────────────── game objects ─────────────────────────────
+
+def parse_gameobject(rid: int, r: bytes, resolve_lock=None) -> dict:
+    if len(r) < 8 + 7:
+        raise LayoutError("record shorter than its header")
+    obj_type, display = struct.unpack_from("<II", r, 0)
+    o, strings = 8, []
+    for _ in range(7):
+        end = r.index(b"\0", o)
+        strings.append(r[o:end].decode("utf-8"))
+        o = end + 1
+    if o + 35 * 4 + 4 + 1 > len(r):
+        raise LayoutError("data block runs past the record")
+    data = struct.unpack_from("<35i", r, o)
+    o += 35 * 4 + 4
+    n_quest_items = r[o]
+    if o + 1 + 4 * n_quest_items + 8 != len(r):
+        raise LayoutError("fields do not add up to the record length")
+    if not strings[0]:
+        raise LayoutError("no name")
+    row: dict = {"object_id": rid, "name": strings[0], "object_type": obj_type}
+    if display:
+        row["display_id"] = display
+    if obj_type in (3, 10) and data[0] > 0 and resolve_lock:
+        row.update(resolve_lock(data[0]))
+    return row
+
+
+def lock_resolver_for(build: str, registry: dict):
+    """Lock lookup from the wago cache: this build's tables if extracted, else the newest one."""
+    from extract_client import lock_resolver  # noqa: E402  (same directory)
+    cache = REPO / ".cache" / "wago"
+    need = ("Lock.csv", "LockType.csv", "SkillLine.csv")
+    candidates = [build] + sorted((b["build"] for b in registry["builds"] if b["build"] != build),
+                                  key=build_key, reverse=True)
+    for b in candidates:
+        if all((cache / b / t).exists() for t in need):
+            if b != build:
+                print(f"  locks resolved with {b}'s Lock tables ({build} not extracted)")
+            return lock_resolver(cache, b)
+    print("  no Lock/LockType/SkillLine tables in .cache/wago; lock fields left out "
+          "(run tools/extract_client.py for some build first)")
+    return None
+
+
 # ───────────────────────────── merge + write ─────────────────────────────
 
 def build_key(build: str) -> tuple[int, ...]:
@@ -311,6 +367,7 @@ def main() -> int:
     for fname, magic, table, key, parse in (
         ("questcache.wdb", QUEST_MAGIC, "quests", "quest_id", parse_quest),
         ("creaturecache.wdb", CREATURE_MAGIC, "npcs", "npc_id", parse_creature),
+        ("gameobjectcache.wdb", GAMEOBJECT_MAGIC, "objects", "object_id", parse_gameobject),
     ):
         path = wdb / fname
         if not path.exists():
@@ -331,6 +388,9 @@ def main() -> int:
         if build not in known:
             raise SystemExit(f"{build} is not in builds.json; register it first")
 
+        if parse is parse_gameobject:
+            resolve = lock_resolver_for(build, registry)
+            parse = lambda rid, r, _res=resolve: parse_gameobject(rid, r, _res)  # noqa: E731
         dest = out / f"{table}.jsonl"
         existing = read_jsonl(dest)
         datamined = {r[key] for r in existing if r.get("source", {}).get("kind") == "datamine"}
