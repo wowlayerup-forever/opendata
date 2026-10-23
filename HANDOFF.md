@@ -30,7 +30,7 @@ HANDOFF tasks 1 to 5 from 2026-10-22 are done and merged (PRs #1 to #6). CI gree
 ## Facts you need
 
 - Forever is client 1.60.1 on the modern engine, Interface/TOC 16001. Launch is 2026-11-04.
-- The owner's beta install: `/Applications/World of Warcraft/_classic_beta_/`, last on build 1.60.1.70532 (not registered; no data from it). Both addons were copied into its `Interface/AddOns/` on 2026-10-23 but never loaded. Its cache was last written by 70205 on 2026-10-04 and is fully imported. The live client's folder is not known yet.
+- The owner's beta install: `/Applications/World of Warcraft/_classic_beta_/`, last on build 1.60.1.70532 (not registered; no data from it). Both addons were copied into its `Interface/AddOns/` on 2026-10-23, never loaded, and removed again the same day; the folder is empty. Its cache was last written by 70205 on 2026-10-04 and is fully imported. The live client's folder is not known yet.
 - wago.tools products as of 2026-10-22: `wow_classic_beta` (1.60.1.70338 ... 70532) and a new `wowf` (1.60.1.70245, 70532), which is likely the live product. Re-check with `python tools/extract_client.py --list-builds`. Be polite: serial requests, descriptive User-Agent.
 - wago CSV quirks: arrays are `Name_0..Name_n`; reserved names get an underscore (`Lock._Index_k`).
 - The GameObjects DB2 for 1.60 only has decorative objects (type 5). Every chest, herb and ore node comes from `gameobjectcache.wdb`.
