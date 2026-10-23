@@ -1,0 +1,77 @@
+name: reconcile
+
+# Nightly: copy every observation batch from the private batch bucket, run the reconciler,
+# validate, and open a PR with the world/ changes. The bucket is only writable by the
+# ingest service, which verifies each batch's signature, so the batches are trusted here
+# (--trust-unknown) and this job never sees contributor keys.
+#
+# Note: a PR opened with the default GITHUB_TOKEN does not trigger the ci workflow, which
+# is why validate runs here before the PR is opened.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+concurrency: reconcile
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  reconcile:
+    if: github.repository == 'wowlayerup-forever/opendata'
+    runs-on: ubuntu-latest
+    env:
+      CONFIGURED: ${{ secrets.GCP_WIF_PROVIDER != '' }}
+    steps:
+      - name: GCP configured?
+        if: env.CONFIGURED != 'true'
+        run: echo "::notice::GCP secrets are not set for this repository yet; nothing to reconcile."
+      - uses: actions/checkout@v4
+        if: env.CONFIGURED == 'true'
+      - uses: actions/setup-python@v5
+        if: env.CONFIGURED == 'true'
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/requirements.txt
+        if: env.CONFIGURED == 'true'
+      - uses: google-github-actions/auth@v2
+        if: env.CONFIGURED == 'true'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_RECONCILE_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+        if: env.CONFIGURED == 'true'
+      - name: Fetch batches
+        if: env.CONFIGURED == 'true'
+        run: |
+          mkdir -p .cache/batches-remote
+          if gcloud storage ls "gs://${{ secrets.GCP_BATCH_BUCKET }}/batches/" > /dev/null 2>&1; then
+            gcloud storage cp -r "gs://${{ secrets.GCP_BATCH_BUCKET }}/batches" .cache/batches-remote/ --quiet
+          fi
+          echo "batches: $(find .cache/batches-remote -name '*.json' | wc -l)"
+      - name: Reconcile
+        if: env.CONFIGURED == 'true'
+        run: python tools/reconcile.py .cache/batches-remote --trust-unknown
+      - name: Validate
+        if: env.CONFIGURED == 'true'
+        run: python tools/validate.py
+      - name: Summarize
+        if: env.CONFIGURED == 'true'
+        run: |
+          echo "## Reconcile" >> "$GITHUB_STEP_SUMMARY"
+          git diff --stat -- data/world >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: peter-evans/create-pull-request@v6
+        if: env.CONFIGURED == 'true'
+        with:
+          branch: reconcile/nightly
+          title: "world: reconcile observations"
+          commit-message: "world: reconcile observation batches"
+          body: |
+            Regenerated `data/world/` from every batch in the batch bucket with `tools/reconcile.py`. Validated in the workflow (this PR does not trigger ci on its own).
+          labels: data,world
+          add-paths: data/world
+          delete-branch: true

@@ -6,10 +6,13 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GCP_CONFIGURED: ${{ secrets.GCP_WIF_PROVIDER != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,6 +25,23 @@ jobs:
           V="${GITHUB_REF_NAME}"
           python tools/build_sqlite.py --version "$V" --out "dist/opendata-$V.sqlite" --parquet
           cd dist && tar czf "opendata-$V-parquet.tar.gz" parquet && sha256sum opendata-* > SHA256SUMS
+      # Mirror to the public releases bucket (CORS + range requests, so browsers can query the
+      # SQLite in place). Identifiers are secrets so they stay masked in the public logs.
+      - uses: google-github-actions/auth@v2
+        if: github.repository == 'wowlayerup-forever/opendata' && env.GCP_CONFIGURED == 'true'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_RELEASE_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+        if: github.repository == 'wowlayerup-forever/opendata' && env.GCP_CONFIGURED == 'true'
+      - name: Publish to the releases bucket
+        if: github.repository == 'wowlayerup-forever/opendata' && env.GCP_CONFIGURED == 'true'
+        run: |
+          V="${GITHUB_REF_NAME}"
+          B="gs://${{ secrets.GCP_RELEASE_BUCKET }}"
+          gcloud storage cp "dist/opendata-$V.sqlite" "dist/opendata-$V-parquet.tar.gz" dist/SHA256SUMS "$B/$V/" --quiet
+          gcloud storage cp "dist/opendata-$V.sqlite" "$B/opendata-latest.sqlite" --quiet \
+            --cache-control "public, max-age=300"
       - uses: softprops/action-gh-release@v2
         with:
           files: |

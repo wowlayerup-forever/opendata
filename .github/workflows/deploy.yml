@@ -1,0 +1,73 @@
+name: deploy
+
+# Builds the service image and deploys both Cloud Run services on every push to main that
+# touches them. GCP access is through Workload Identity Federation: no keys are stored, and
+# the GCP side only trusts this repository's main branch. Every identifier is a repository
+# secret so it is masked in the (public) logs.
+
+on:
+  push:
+    branches: [main]
+    paths: ["service/**", "tools/mcp_server.py", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+
+concurrency: deploy
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: us-central1
+
+jobs:
+  deploy:
+    if: github.repository == 'wowlayerup-forever/opendata'
+    runs-on: ubuntu-latest
+    env:
+      CONFIGURED: ${{ secrets.GCP_WIF_PROVIDER != '' }}
+    steps:
+      - name: GCP configured?
+        if: env.CONFIGURED != 'true'
+        run: echo "::notice::GCP secrets are not set for this repository yet; nothing to deploy."
+      - uses: actions/checkout@v4
+        if: env.CONFIGURED == 'true'
+      - uses: google-github-actions/auth@v2
+        if: env.CONFIGURED == 'true'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+        if: env.CONFIGURED == 'true'
+      - name: Build and push the image
+        if: env.CONFIGURED == 'true'
+        id: image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/opendata/service:${GITHUB_SHA::12}"
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build -f service/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE" --quiet
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+      - name: Deploy ingest
+        if: env.CONFIGURED == 'true'
+        run: |
+          gcloud run deploy opendata-ingest --quiet --region "$REGION" \
+            --image "${{ steps.image.outputs.image }}" \
+            --service-account "${{ secrets.GCP_INGEST_SA }}" \
+            --set-env-vars "MODE=ingest,BATCH_STORE=gs://${{ secrets.GCP_BATCH_BUCKET }},CONTRIBUTOR_KEYS=sm://projects/${{ secrets.GCP_PROJECT }}/secrets/contributor-keys" \
+            --allow-unauthenticated --max-instances 3 --concurrency 20 --memory 512Mi --cpu 1 --timeout 60
+      - name: Deploy MCP
+        if: env.CONFIGURED == 'true'
+        run: |
+          gcloud run deploy opendata-mcp --quiet --region "$REGION" \
+            --image "${{ steps.image.outputs.image }}" \
+            --service-account "${{ secrets.GCP_MCP_SA }}" \
+            --set-env-vars "MODE=mcp,RELEASE_DB=gs://${{ secrets.GCP_RELEASE_BUCKET }}/opendata-latest.sqlite" \
+            --allow-unauthenticated --max-instances 3 --concurrency 40 --memory 1Gi --cpu 1 --timeout 60
+      - name: Health checks
+        if: env.CONFIGURED == 'true'
+        run: |
+          for svc in opendata-ingest opendata-mcp; do
+            url=$(gcloud run services describe "$svc" --region "$REGION" --format 'value(status.url)')
+            curl -fsS "$url/healthz" > /dev/null && echo "$svc healthy"
+          done

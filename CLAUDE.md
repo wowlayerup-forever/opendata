@@ -15,6 +15,8 @@ An open, versioned game dataset for World of Warcraft: Forever, keyed by Blizzar
 - `data/client/` and `data/api/` are generated. Do not hand-edit them; fix the extractor.
 - Keep `tools/` on the Python standard library plus `jsonschema`. No new runtime dependencies without a reason in the PR.
 - Plain punctuation in docs and messages; no em dashes.
+- This repo is public. No GCP identifiers (project id or number, billing account, service account emails, bucket names, Workload Identity paths) and no secrets in any tracked file; workflows read them from repository secrets so they are masked in the public logs. The concrete infrastructure lives in the private repo wowlayerup-forever/opendata-infra.
+- Only workflows that run on `main` pushes, schedules, manual dispatch or tags may have `id-token: write`. Never give it to a workflow that runs on pull requests, never use `pull_request_target`, and gate every GCP job on `github.repository == 'wowlayerup-forever/opendata'`.
 
 ## Before every commit
 
@@ -23,6 +25,7 @@ python tools/validate.py                     # must print 0 errors
 python tools/build_sqlite.py                 # must build; every table exists even when empty
 python tests/run_addons.py                   # when tools/addons/ or the pipeline tools change; needs luajit
 python tests/test_mcp_server.py              # when tools/mcp_server.py or the SQLite layout changes
+python tests/test_service.py                 # when service/ or the uploader changes
 ```
 
 If a schema changes: update `examples/`, bump nothing unless a field is removed or its meaning changes (then bump the major version in CONVENTIONS.md and the schema `$id`), and add a CHANGELOG line.
@@ -48,8 +51,10 @@ tools/uploader.py      collector SavedVariables -> signed JSON batches in .cache
 tools/reconcile.py     batches -> data/world/*.jsonl, deterministic
 tools/launch.py        launch-day sequence over the tools above (--dry-run first)
 tools/mcp_server.py    MCP server (stdio) over dist/opendata.sqlite; read-only, cites rows
+service/               Cloud Run image (stdlib): MODE=ingest (POST /v1/batches) or MODE=mcp (MCP over HTTP)
 tests/                 addons under LuaJIT against a mocked WoW API (wowmock.lua), through uploader/reconcile/import_api; MCP server over stdio
-.github/workflows/     ci (PRs: validate + addons), release (tags YYYY.MM.N), extract (workflow_dispatch -> PR)
+.github/workflows/     ci (PRs: validate, addons, image; no GCP), deploy (main -> Cloud Run), reconcile (nightly -> PR),
+                       release (tags -> GitHub release + public bucket), extract (dispatch -> PR)
 ```
 
 ## Testing the extractor without network
@@ -63,3 +68,7 @@ python tools/extract_client.py --build 0.0.0.1 --cache /tmp/fx --out /tmp/fxout 
 ## Commit messages
 
 Imperative subject, body explains what and why. Attribution trailers are fine.
+
+## Repository secrets the GCP workflows read
+
+`GCP_PROJECT`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `GCP_RECONCILE_SA`, `GCP_RELEASE_SA`, `GCP_INGEST_SA`, `GCP_MCP_SA`, `GCP_BATCH_BUCKET`, `GCP_RELEASE_BUCKET`. Values are set from the private infra repo's setup script. Until `GCP_WIF_PROVIDER` is set, deploy and reconcile skip with a notice and release skips the bucket upload.
