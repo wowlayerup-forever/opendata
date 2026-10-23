@@ -56,10 +56,17 @@ def rows(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+def client_copy(root: Path) -> None:
+    """data/client as a real directory (hard links): validate.py does not follow symlinked dirs,
+    and without client rows it skips the reference checks."""
+    shutil.copytree(REPO / "data" / "client", root / "client", copy_function=os.link)
+
+
 def validate(root: Path) -> None:
     r = tool("tools/validate.py", "--root", str(root.relative_to(REPO)))
     summary = r.stdout.strip().splitlines()[-1]
     check(" 0 errors" in summary, f"validate {root.name}: {summary}")
+    check(int(summary.split()[0]) > 60000, f"validate {root.name} saw the client tables (reference checks ran)")
 
 
 def collector() -> None:
@@ -68,7 +75,7 @@ def collector() -> None:
     sv, keys, batches, root = d / "OpenDataCollector.lua", d / "keys", d / "batches", d / "root"
     for p in (keys, batches, root / "world"):
         p.mkdir(parents=True)
-    (root / "client").symlink_to(REPO / "data" / "client")
+    client_copy(root)
     env = {"OPENDATA_KEY_FILE": str(keys / "harness.json")}
 
     lua("tests/scenario_collector.lua", str(sv), "1")
@@ -116,7 +123,7 @@ def apisurface() -> None:
     d = OUT / "api"
     root = d / "root"
     (root / "api").mkdir(parents=True)
-    (root / "client").symlink_to(REPO / "data" / "client")
+    client_copy(root)
     sv = d / "APISurface.lua"
 
     lua("tests/scenario_apisurface.lua", str(sv))

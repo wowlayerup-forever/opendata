@@ -32,6 +32,8 @@ jobs:
           assert not missing, f"tables missing from build: {missing}"
           print(f"ok: {len(want)} tables present")
           PY
+      - name: MCP server end to end over stdio
+        run: python tests/test_mcp_server.py
       - uses: actions/upload-artifact@v4
         with:
           name: opendata-sqlite
