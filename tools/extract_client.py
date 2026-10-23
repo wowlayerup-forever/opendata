@@ -53,6 +53,7 @@ TABLES = [
     "SpellName", "Spell", "SpellLevels", "SpellMisc", "SpellCastTimes", "SpellEffect", "SpellReagents",
     "SpellTotems", "SkillLineAbility", "SkillLine",
     "Creature", "GameObjects", "Lock",
+    "UiMapAssignment",  # not transformed; tools/reconcile.py maps UiMap positions to zones with it
 ]
 
 # ItemStatType -> name. Unknown types are kept as stat_<n>.
