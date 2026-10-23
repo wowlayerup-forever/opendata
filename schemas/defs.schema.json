@@ -298,7 +298,9 @@
       "additionalProperties": false,
       "properties": {
         "map_id": {
-          "$ref": "#/$defs/id"
+          "type": "integer",
+          "minimum": 0,
+          "description": "Map.db2 id (instance map) as GetInstanceInfo reports it. 0 is Eastern Kingdoms, 1 Kalimdor."
         },
         "zone_id": {
           "$ref": "#/$defs/id"
