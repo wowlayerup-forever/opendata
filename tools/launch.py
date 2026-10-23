@@ -2,12 +2,19 @@
 """Launch-day sequence: register and extract a new client build, then fold in everything local.
 
   python tools/launch.py --dry-run                      # show what would happen
-  python tools/launch.py                                 # newest build of --product (default wowf)
+  python tools/launch.py --install-addons                # extract, and put APISurface + OpenDataCollector in the client
+  (play: log in, loot, vendors, quests, trainer, a node; then log out)
+  python tools/launch.py                                 # again: now imports the API dump, cache and observations
   python tools/launch.py --build 1.60.1.71000 --product wowf --install "/Applications/World of Warcraft/_classic_"
+
+Running it twice is the intended use: the extraction is idempotent, and the second run finds
+what the first session left behind.
 
 Steps, each the existing tool run as a subprocess (stops at the first failure):
   1. list wago.tools builds and pick the build (newest 1.x of --product unless --build)
   2. extract_client.py --build B --product P --register   (unchanged rows keep build_first_seen)
+     with --install-addons: copy tools/addons/* into <install>/Interface/AddOns/
+     (a new addon folder needs a full client restart, not /reload)
   3. fill builds.json "interface" for B from the APISurface dump, if the dump is from B
   4. import_api.py on APISurface.lua, if the dump is from B
   5. import_cache.py on <install>/Cache/WDB/enUS, if present
@@ -17,13 +24,16 @@ Steps, each the existing tool run as a subprocess (stops at the first failure):
 It never commits, pushes or tags. At the end it prints the git and tag commands to run
 after reviewing the diff; pushing a YYYY.MM.N tag starts the release workflow.
 
---install defaults to the WoW product directory under /Applications/World of Warcraft whose
-Cache/WDB was written most recently (the one just played).
+--install defaults to a WoW product directory under /Applications/World of Warcraft: the
+non-beta one if exactly one exists (on launch day the live client may not have a cache yet),
+otherwise the one whose Cache/WDB was written most recently. Pass --install to be sure.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -58,10 +68,40 @@ def pick_install(given: str | None) -> Path | None:
         if not p.is_dir():
             raise SystemExit(f"--install {p}: not a directory")
         return p
-    dirs = [d for d in WOW_ROOT.glob("_*_") if (d / "Cache" / "WDB").is_dir()] if WOW_ROOT.is_dir() else []
-    if not dirs:
+    if not WOW_ROOT.is_dir():
         return None
-    return max(dirs, key=lambda d: max((f.stat().st_mtime for f in (d / "Cache" / "WDB").rglob("*.wdb")), default=0))
+    products = [d for d in WOW_ROOT.glob("_*_") if (d / "Interface").is_dir() or (d / "WTF").is_dir()]
+    live = [d for d in products if "beta" not in d.name and "ptr" not in d.name]
+    if len(live) == 1:
+        return live[0]
+    played = [d for d in products if (d / "Cache" / "WDB").is_dir()]
+    if not played:
+        return products[0] if len(products) == 1 else None
+    return max(played, key=lambda d: max((f.stat().st_mtime for f in (d / "Cache" / "WDB").rglob("*.wdb")), default=0))
+
+
+ADDONS = ("APISurface", "OpenDataCollector")
+
+
+def install_addons(install: Path, dry: bool) -> None:
+    dest_root = install / "Interface" / "AddOns"
+    print(f"\ninstall addons into {dest_root}")
+    for name in ADDONS:
+        src, dest = TOOLS / "addons" / name, dest_root / name
+        print(f"  {name}{' (replacing the copy there)' if dest.exists() else ''}")
+        if dry:
+            continue
+        dest_root.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(src, dest)
+    print("  quit and relaunch the client (a new addon folder is not picked up by /reload); "
+          "if the AddOns list says out of date, the .toc interface is wrong, see the check below")
+
+
+def toc_interface(name: str) -> int | None:
+    m = re.search(r"^## Interface:\s*(\d+)", (TOOLS / "addons" / name / f"{name}.toc").read_text(encoding="utf-8"), re.M)
+    return int(m.group(1)) if m else None
 
 
 def api_dumps(install: Path | None) -> list[tuple[Path, dict]]:
@@ -79,6 +119,7 @@ def main() -> int:
     ap.add_argument("--build", help="full build string; default: newest 1.x build of --product on wago.tools")
     ap.add_argument("--product", default="wowf", help="wago product (default wowf, the likely live product)")
     ap.add_argument("--install", help="WoW product directory, e.g. /Applications/World of Warcraft/_classic_")
+    ap.add_argument("--install-addons", action="store_true", help="copy APISurface and OpenDataCollector into the client")
     ap.add_argument("--dry-run", action="store_true", help="print the plan, change nothing")
     args = ap.parse_args()
     dry = args.dry_run
@@ -107,6 +148,10 @@ def main() -> int:
 
     # 2. extract
     run(["tools/extract_client.py", "--build", build, "--product", args.product, "--register"], dry)
+    if args.install_addons:
+        if not install:
+            raise SystemExit("--install-addons: no WoW product directory found; pass --install")
+        install_addons(install, dry)
 
     # 3 + 4. API dump from this build
     dumps = [(p, db) for p, db in api_dumps(install) if f"{db.get('version')}.{db.get('build')}" == build]
@@ -115,6 +160,12 @@ def main() -> int:
         print(f"\nAPISurface dumps from other builds ignored: {', '.join(sorted(set(others)))}")
     if dumps:
         path, db = dumps[0]
+        tocs = {name: toc_interface(name) for name in ADDONS}
+        stale = {n: t for n, t in tocs.items() if db.get("interface") and t != db["interface"]}
+        if stale:
+            print(f"\nWARNING: the client's interface is {db['interface']} but the .toc files say "
+                  f"{', '.join(f'{n} {t}' for n, t in stale.items())}. Update '## Interface:' in "
+                  f"tools/addons/*/*.toc (and the Interface line in CLAUDE.md/HANDOFF.md), then --install-addons again.")
         if not dry:
             registry = json.loads(registry_path.read_text(encoding="utf-8"))
             for b in registry["builds"]:
@@ -123,7 +174,13 @@ def main() -> int:
                     b["notes"] = f"{b.get('notes', '')} Interface from the APISurface dump.".strip()
                     registry_path.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
                     print(f"\nbuilds.json: interface {db['interface']} for {build}")
-        run(["tools/import_api.py", str(path), "--build", build], dry)
+        # OpenDataCollector defines no global functions, so a dump with only it loaded is clean
+        others_loaded = set(db.get("thirdPartyAddOns") or []) - {"OpenDataCollector"}
+        if others_loaded:
+            print(f"\nAPISurface dump was made with other addons loaded ({', '.join(sorted(others_loaded))}); "
+                  "import_api.py will refuse it. Disable them, log in again, rerun.")
+        run(["tools/import_api.py", str(path), "--build", build]
+            + ([] if others_loaded else ["--allow-addons"]), dry)
     else:
         print(f"\nno APISurface dump from {build}: log in once with the addon enabled, /reload, rerun "
               f"(builds.json interface for {build} stays empty)")
