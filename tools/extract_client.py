@@ -52,7 +52,7 @@ TABLES = [
     "ItemDamageRanged", "ItemDamageThrown", "ItemDamageAmmo",
     "SpellName", "Spell", "SpellLevels", "SpellMisc", "SpellCastTimes", "SpellEffect", "SpellReagents",
     "SpellTotems", "SkillLineAbility", "SkillLine",
-    "Creature", "GameObjects", "Lock",
+    "Creature", "GameObjects", "Lock", "LockType",
     "UiMapAssignment",  # not transformed; tools/reconcile.py maps UiMap positions to zones with it
 ]
 
@@ -492,8 +492,42 @@ def extract_npcs(cache: Path, build: str) -> list[dict]:
     return out
 
 
-def extract_objects(cache: Path, build: str) -> list[dict]:
+def lock_resolver(cache: Path, build: str):
+    """Return lock_id -> {lock_type, required_skill_rank, required_skill_id?}.
+
+    Lock entries of Type 2 name a LockType in _Index_k (wago prefixes the column because
+    Index is reserved) and the rank needed in Skill_k. LockType has no SkillLine link, so
+    the skill is the top-level SkillLine whose name equals the LockType name, when exactly
+    one does (Herbalism, Mining). Pick Lock has no such SkillLine and keeps only lock_type."""
     locks = by_id(read(cache, build, "Lock"))
+    lock_types = by_id(read(cache, build, "LockType"))
+    top_skills: dict[str, list[int]] = defaultdict(list)
+    for r in read(cache, build, "SkillLine"):
+        if i(r.get("ParentSkillLineID")) == 0 and r.get("DisplayName_lang"):
+            top_skills[r["DisplayName_lang"]].append(i(r["ID"]))
+
+    def resolve(lock_id: int) -> dict:
+        lock = locks.get(lock_id)
+        if not lock:
+            return {}
+        entries = [(i(lock.get(f"_Index_{k}")), i(lock.get(f"Skill_{k}"))) for k in range(8)
+                   if i(lock.get(f"Type_{k}")) == 2 and i(lock.get(f"_Index_{k}")) > 0]
+        if not entries:
+            return {}
+        lock_type, rank = next((e for e in entries if e[1] > 0), entries[0])
+        out = {"lock_type": lock_type}
+        if rank > 0:
+            out["required_skill_rank"] = rank
+        skills = top_skills.get(lock_types.get(lock_type, {}).get("Name_lang", ""), [])
+        if len(skills) == 1:
+            out["required_skill_id"] = skills[0]
+        return out
+
+    return resolve
+
+
+def extract_objects(cache: Path, build: str) -> list[dict]:
+    resolve_lock = lock_resolver(cache, build)
     out = []
     for r in read(cache, build, "GameObjects"):
         name = r.get("Name_lang", "")
@@ -502,15 +536,9 @@ def extract_objects(cache: Path, build: str) -> list[dict]:
         row = {"object_id": i(r["ID"]), "name": name, "object_type": i(r.get("TypeID"))}
         if i(r.get("DisplayID")):
             row["display_id"] = i(r["DisplayID"])
-        # chests (3) and goobers keep a lock id in PropValue_0; lock type 2 = skill (herbalism 182, mining 186, lockpicking 633)
+        # chests and nodes (3) and goobers (10) keep a lock id in PropValue_0
         if row["object_type"] in (3, 10):
-            lock = locks.get(i(r.get("PropValue_0")))
-            if lock:
-                for k in range(8):
-                    if i(lock.get(f"Type_{k}")) == 2 and i(lock.get(f"Index_{k}")) > 0:
-                        row["required_skill_id"] = i(lock[f"Index_{k}"])
-                        row["required_skill_rank"] = i(lock.get(f"Skill_{k}"))
-                        break
+            row.update(resolve_lock(i(r.get("PropValue_0"))))
         row.update(prov("GameObjects", build))
         out.append(row)
     return out
@@ -591,7 +619,15 @@ def main() -> int:
             npcs += kept
         write_jsonl(path, npcs, "npc_id")
     if "objects" in want:
-        write_jsonl(out / "objects.jsonl", extract_objects(cache, args.build), "object_id")
+        objects = extract_objects(cache, args.build)
+        # objects.jsonl also holds objects tools/import_cache.py read from gameobjectcache.wdb
+        own = {r["object_id"] for r in objects}
+        path = out / "objects.jsonl"
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                objects += [r for r in map(json.loads, filter(str.strip, f))
+                            if r.get("source", {}).get("kind") != "datamine" and r["object_id"] not in own]
+        write_jsonl(path, objects, "object_id")
     print("done. Run tools/validate.py next.")
     return 0
 

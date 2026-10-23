@@ -29,12 +29,19 @@
       "type": "integer",
       "minimum": 0
     },
+    "lock_type": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "LockType id of the object's lock (1 pick lock, 2 herbalism, 3 mining, 5 open, ...), from Lock and LockType."
+    },
     "required_skill_id": {
-      "$ref": "../defs.schema.json#/$defs/id"
+      "$ref": "../defs.schema.json#/$defs/id",
+      "description": "SkillLine needed to open it: the top-level SkillLine named like the LockType (Herbalism 182, Mining 186). Absent when no SkillLine matches, for example Pick Lock."
     },
     "required_skill_rank": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "description": "Rank needed in that skill (Lock Skill_k)."
     },
     "display_id": {
       "type": "integer"

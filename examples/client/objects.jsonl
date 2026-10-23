@@ -1,1 +1,1 @@
-{"object_id":500001,"name":"Example Herb Node","object_type":3,"required_skill_id":182,"required_skill_rank":15,"layer":"client","source":{"kind":"datamine","ref":"GameObjects"},"build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","confidence":"exact"}
+{"object_id":500001,"name":"Example Herb Node","object_type":3,"lock_type":2,"required_skill_id":182,"required_skill_rank":15,"layer":"client","source":{"kind":"datamine","ref":"GameObjects"},"build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","confidence":"exact"}
