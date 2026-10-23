@@ -44,6 +44,7 @@ tools/import_cache.py  client WDB cache -> data/client/quests + cache-only creat
 tools/addons/OpenDataCollector/ in-game observation collector (loot, vendors, quests, trainers, levels)
 tools/uploader.py      collector SavedVariables -> signed JSON batches in .cache/batches/ (not committed)
 tools/reconcile.py     batches -> data/world/*.jsonl, deterministic
+tools/launch.py        launch-day sequence over the tools above (--dry-run first)
 .github/workflows/     ci (PRs), release (tags YYYY.MM.N), extract (workflow_dispatch -> PR)
 ```
 
