@@ -110,7 +110,12 @@
         "xp": {
           "type": "integer",
           "minimum": 0,
-          "description": "At quest level, before any multiplier."
+          "description": "QuestXP[quest_level].Difficulty_<RewardXPDifficulty> as shipped: at quest level, before xp_multiplier and before the server's level-difference scaling and rounding."
+        },
+        "xp_multiplier": {
+          "type": "number",
+          "minimum": 0,
+          "description": "RewardXPMultiplier as shipped, when not 1. Not applied to xp."
         },
         "money": {
           "type": "integer",
@@ -148,7 +153,8 @@
                 "type": "integer"
               }
             }
-          }
+          },
+          "description": "Base reputation from QuestFactionReward for the quest's value index, before racial or other bonuses."
         }
       }
     }

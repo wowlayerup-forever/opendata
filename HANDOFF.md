@@ -35,7 +35,7 @@ HANDOFF tasks 1 to 5 from 2026-10-22 are done and merged (PRs #1 to #6). CI gree
 - The GameObjects DB2 for 1.60 only has decorative objects (type 5). Every chest, herb and ore node comes from `gameobjectcache.wdb`.
 - Lock entries of type 2 name a LockType (1 pick lock, 2 herbalism, 3 mining, 5 open), not a SkillLine. `required_skill_id` is the top-level SkillLine named like the LockType (Herbalism 182, Mining 186); Pick Lock has no match and keeps only `lock_type`.
 - WDB layouts for 1.60 are documented at the top of `tools/import_cache.py`. Every record must decode to exactly its stored length or it is skipped and listed. Quest 97920 (a Forever skill objective) is the one known failure: its objective is 12 bytes longer and only one sample exists.
-- The creature cache has no level, faction or npc flags. Quest XP and reputation are difficulty indexes into `QuestXP` / `QuestFactionReward`, not amounts, so `rewards.xp` and `rewards.reputation` are left out.
+- The creature cache has no level, faction or npc flags. Quest XP and reputation are difficulty indexes in the cache; `import_cache.py` resolves them through `QuestXP` / `QuestFactionReward` (xp is the table value at quest level; the quest's `xp_multiplier` is kept beside it, not applied, since the server's scaling and rounding are not client data). Observed `quest_turnin` events record the XP actually received and can confirm this.
 - Item stats, damage and armor are computed with the standard client formulas from `RandPropPoints`, `ItemDamage*`, `ItemArmor*`; raw inputs are on each row. `INV_BUCKET` (slot to budget column) and the caster-weapon flag `Flags_1 & 0x200` are the likeliest errors if a tooltip disagrees.
 - Owner's other tools (separate, not public): `stefan-routes`, `Stockkeeper` (its `tools/sync.py` merges SavedVariables across accounts; `uploader.py --wow` follows the same pattern), `gearfinder.py`.
 
@@ -66,7 +66,7 @@ Expect first-contact breakage in the addons (they have never run): an event payl
 
 ### Later, not now
 
-Quest XP and reputation amounts from `QuestXP` / `QuestFactionReward`; the 12-byte objective variant in quest 97920 once more samples exist; MCP server + OpenAPI over the SQLite; a static site; AH market aggregates (blocked on what Forever's addon API allows for AH scans); hosted ingest (Cloudflare Worker + R2) replacing the local batch directory; emulator seeding of `world/`.
+The 12-byte objective variant in quest 97920 once more samples exist; MCP server + OpenAPI over the SQLite; a static site; AH market aggregates (blocked on what Forever's addon API allows for AH scans); hosted ingest (Cloudflare Worker + R2) replacing the local batch directory; emulator seeding of `world/`.
 
 ## Open questions
 
