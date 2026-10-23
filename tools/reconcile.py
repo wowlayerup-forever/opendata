@@ -123,11 +123,11 @@ def load_batches(dir_: Path, keys: dict[str, str], trust_unknown: bool, builds: 
     return out
 
 
-def load_uimap_zones(builds: set[str]) -> dict[str, dict[int, tuple[int, int]]]:
+def load_uimap_zones(builds: set[str], wago_cache: Path) -> dict[str, dict[int, tuple[int, int]]]:
     """build -> {ui_map_id: (map_id, area_id)} from cached UiMapAssignment, full-map rows only."""
     out: dict[str, dict[int, tuple[int, int]]] = {}
     for b in builds:
-        path = REPO / ".cache" / "wago" / b / "UiMapAssignment.csv"
+        path = wago_cache / b / "UiMapAssignment.csv"
         if not path.exists():
             continue
         best: dict[int, tuple[int, int, int]] = {}
@@ -426,6 +426,7 @@ def main() -> int:
     ap.add_argument("--trust-unknown", action="store_true", help="accept batches from contributors without a key")
     ap.add_argument("--out", default="data/world")
     ap.add_argument("--client", default="data/client", help="client tables used for spell and recipe lookups")
+    ap.add_argument("--wago-cache", default=".cache/wago", help="where tools/extract_client.py caches DB2 CSVs (for UiMapAssignment)")
     ap.add_argument("--dispute-loot", type=int, default=200, help="loot windows without the item before an emu_seed row is disputed")
     ap.add_argument("--dispute-vendor", type=int, default=5, help="merchant windows without the item before an emu_seed row is disputed")
     args = ap.parse_args()
@@ -435,7 +436,8 @@ def main() -> int:
     client = Path(args.client) if Path(args.client).is_absolute() else REPO / args.client
     spells = {r["spell_id"]: r["name"] for r in read_jsonl(client / "spells.jsonl")}
     recipes = read_jsonl(client / "recipes.jsonl")
-    zones = load_uimap_zones({b["build"] for b in batches})
+    wago = Path(args.wago_cache) if Path(args.wago_cache).is_absolute() else REPO / args.wago_cache
+    zones = load_uimap_zones({b["build"] for b in batches}, wago)
     missing = sorted({b["build"] for b in batches} - set(zones))
     if missing:
         print(f"  note: no UiMapAssignment cached for {', '.join(missing)}; fishing loot skipped and spawns lack zone_id there "
