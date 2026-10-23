@@ -59,6 +59,7 @@ TABLES = [
     "SpellTotems", "SkillLineAbility", "SkillLine",
     "Creature", "GameObjects", "Lock", "LockType",
     "UiMapAssignment",  # not transformed; tools/reconcile.py maps UiMap positions to zones with it
+    "QuestXP", "QuestFactionReward",  # not transformed; tools/import_cache.py resolves quest rewards with them
 ]
 
 # ItemStatType -> name. Unknown types are kept as stat_<n>.

@@ -26,8 +26,9 @@ not decode to exactly its stored length is skipped and reported, never guessed a
 
   questcache.wdb, per record (little endian):
     @0 quest id   @8 quest level   @16 min level   @24 QuestSortID   @28 QuestInfoID
-    @36 next quest   @48 reward money   @100 flags
+    @36 next quest   @40 XP difficulty   @44 XP multiplier (float)   @48 reward money   @100 flags
     @116 + 16k (k<4)  reward item, amount     @180 + 12k (k<6)  choice item, amount, display
+    @300 + 16k (k<5)  reward faction id, value index, override, cap
     @436 objective count   @440 allowable races (u64, all bits = all races)
     @488 objectives, each: id u32, type u32, storage index u8, object id i32, amount i32,
          24 more bytes, description length u8, one flag byte, description
@@ -49,9 +50,16 @@ not decode to exactly its stored length is skipped and reported, never guessed a
     data[0] is the Lock id, resolved through Lock, LockType and SkillLine from the wago
     cache (the cache build's tables if extracted, otherwise the newest extracted build).
 
+Quest XP and reputation are difficulty indexes in the cache. They are resolved through the
+QuestXP and QuestFactionReward DB2 tables from the wago cache (the cache build's if
+extracted, otherwise the newest extracted build): rewards.xp = QuestXP[quest level]
+.Difficulty_<index>, as shipped, with the cache's XP multiplier kept beside it rather than
+applied; a reputation value index n > 0 reads QuestFactionReward row 1, n < 0 row 2 at |n|.
+A faction with a non-zero override is left out (what the override means is not in the
+client data) and counted.
+
 Not carried by the cache and left absent: NPC levels, faction and npc flags (unit fields the
-client only sees on a spawned unit), quest XP and reputation amounts (the cache stores
-difficulty indexes into QuestXP and QuestFactionReward, not amounts).
+client only sees on a spawned unit).
 """
 from __future__ import annotations
 
@@ -115,7 +123,7 @@ def text(raw: bytes) -> str:
 
 # ───────────────────────────── quests ─────────────────────────────
 
-def parse_quest(rid: int, r: bytes) -> dict:
+def parse_quest(rid: int, r: bytes, rewards_tables=None, stats=None) -> dict:
     if len(r) < 488 or i32(r, 0) != rid:
         raise LayoutError("quest id at @0 does not match the record id")
     n_obj = i32(r, 436)
@@ -185,6 +193,33 @@ def parse_quest(rid: int, r: bytes) -> dict:
         rewards["items"] = reward_items
     if choice:
         rewards["choice_items"] = choice
+    if rewards_tables:
+        quest_xp, faction_reward = rewards_tables
+        xp_row = quest_xp.get(row["quest_level"])
+        xp_index = i32(r, 40)
+        if xp_row and 0 < xp_index <= 9:
+            xp = int(xp_row.get(f"Difficulty_{xp_index}") or 0)
+            if xp > 0:
+                rewards["xp"] = xp
+                mult = round(struct.unpack_from("<f", r, 44)[0], 4)
+                if mult != 1.0:
+                    rewards["xp_multiplier"] = mult
+        rep = []
+        for k in range(5):
+            faction, index, override = i32(r, 300 + 16 * k), i32(r, 304 + 16 * k), i32(r, 308 + 16 * k)
+            if faction <= 0 or index == 0:
+                continue
+            if override:
+                if stats is not None:
+                    stats["reputation overrides left out"] = stats.get("reputation overrides left out", 0) + 1
+                continue
+            table_row = faction_reward.get(1 if index > 0 else 2)
+            if table_row and abs(index) <= 9:
+                value = int(table_row.get(f"Difficulty_{abs(index)}") or 0)
+                if value:
+                    rep.append({"faction_id": faction, "value": value})
+        if rep:
+            rewards["reputation"] = rep
     row["rewards"] = rewards
     return row
 
@@ -252,21 +287,33 @@ def parse_gameobject(rid: int, r: bytes, resolve_lock=None) -> dict:
     return row
 
 
-def lock_resolver_for(build: str, registry: dict):
-    """Lock lookup from the wago cache: this build's tables if extracted, else the newest one."""
-    from extract_client import lock_resolver  # noqa: E402  (same directory)
+def tables_build(build: str, registry: dict, need: tuple[str, ...], what: str) -> str | None:
+    """The build whose DB2 tables to use: the cache's own if extracted, else the newest one."""
     cache = REPO / ".cache" / "wago"
-    need = ("Lock.csv", "LockType.csv", "SkillLine.csv")
     candidates = [build] + sorted((b["build"] for b in registry["builds"] if b["build"] != build),
                                   key=build_key, reverse=True)
     for b in candidates:
-        if all((cache / b / t).exists() for t in need):
+        if all((cache / b / f"{t}.csv").exists() for t in need):
             if b != build:
-                print(f"  locks resolved with {b}'s Lock tables ({build} not extracted)")
-            return lock_resolver(cache, b)
-    print("  no Lock/LockType/SkillLine tables in .cache/wago; lock fields left out "
-          "(run tools/extract_client.py for some build first)")
+                print(f"  {what} resolved with {b}'s {'/'.join(need)} ({build} not extracted)")
+            return b
+    print(f"  no {'/'.join(need)} in .cache/wago; {what} left out (run tools/extract_client.py for some build first)")
     return None
+
+
+def lock_resolver_for(build: str, registry: dict):
+    from extract_client import lock_resolver  # noqa: E402  (same directory)
+    b = tables_build(build, registry, ("Lock", "LockType", "SkillLine"), "locks")
+    return lock_resolver(REPO / ".cache" / "wago", b) if b else None
+
+
+def quest_reward_tables_for(build: str, registry: dict):
+    from extract_client import by_id, read  # noqa: E402
+    b = tables_build(build, registry, ("QuestXP", "QuestFactionReward"), "quest XP and reputation")
+    if not b:
+        return None
+    cache = REPO / ".cache" / "wago"
+    return by_id(read(cache, b, "QuestXP")), by_id(read(cache, b, "QuestFactionReward"))
 
 
 # ───────────────────────────── merge + write ─────────────────────────────
@@ -388,9 +435,13 @@ def main() -> int:
         if build not in known:
             raise SystemExit(f"{build} is not in builds.json; register it first")
 
+        notes: dict[str, int] = {}
         if parse is parse_gameobject:
             resolve = lock_resolver_for(build, registry)
             parse = lambda rid, r, _res=resolve: parse_gameobject(rid, r, _res)  # noqa: E731
+        elif parse is parse_quest:
+            tables = quest_reward_tables_for(build, registry)
+            parse = lambda rid, r, _t=tables: parse_quest(rid, r, _t, notes)  # noqa: E731
         dest = out / f"{table}.jsonl"
         existing = read_jsonl(dest)
         datamined = {r[key] for r in existing if r.get("source", {}).get("kind") == "datamine"}
@@ -413,6 +464,8 @@ def main() -> int:
               f"({', '.join(f'{v} {k}' for k, v in stats.items())})")
         if shadowed:
             print(f"  {shadowed} already have a DB2 row, left as is")
+        for what, n in sorted(notes.items()):
+            print(f"  {n} {what}")
         if skipped:
             print(f"  {len(skipped)} skipped, layout did not check out:")
             for s in skipped:
