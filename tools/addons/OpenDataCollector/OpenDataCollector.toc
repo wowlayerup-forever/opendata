@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: OpenDataCollector
+## Notes: Records loot, vendors, quest givers, trainers and NPC levels for the opendata dataset. IDs and counts only.
+## Author: wowlayerup-forever
+## Version: 1
+## SavedVariables: OpenDataCollectorDB
+
+OpenDataCollector.lua

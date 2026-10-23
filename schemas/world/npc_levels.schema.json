@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wowlayerup-forever/opendata/schemas/v1/world/npc_levels.schema.json",
+  "title": "world/npc_levels",
+  "description": "Creature levels as observed in game (nameplate, target, mouseover). The client cache does not carry levels on the modern engine, so they are a world fact. One row per creature per observed level; the level range is the min and max over a creature's rows.",
+  "x-primary-key": [
+    "npc_id",
+    "level",
+    "build_last_seen"
+  ],
+  "allOf": [
+    {
+      "$ref": "../defs.schema.json#/$defs/world_provenance"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "npc_id",
+    "level",
+    "n"
+  ],
+  "properties": {
+    "npc_id": {
+      "$ref": "../defs.schema.json#/$defs/id"
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "UnitLevel as shown. Skull (??) sightings are not recorded."
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Distinct spawns seen at this level."
+    }
+  }
+}

@@ -1,0 +1,2 @@
+{"npc_id":400001,"level":18,"n":31,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}
+{"npc_id":400001,"level":19,"n":27,"layer":"world","build_first_seen":"0.0.0.1","build_last_seen":"0.0.0.1","source":{"kind":"observation","ref":"reconciler:example"},"confidence":"verified"}
