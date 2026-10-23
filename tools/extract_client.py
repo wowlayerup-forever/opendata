@@ -17,6 +17,11 @@ Usage:
 Tables are cached under .cache/wago/<build>/<Table>.csv and never re-downloaded.
 Output: data/client/{items,spells,recipes,npcs,objects}.jsonl, sorted by primary key.
 
+Extracting a newer build over an older one keeps history: a row that did not change keeps
+its build_first_seen, a changed row is replaced, and a row whose ID the new build no longer
+has stays with the build_last_seen of the last build that had it. Extracting an older build
+than the one on disk is refused (it would rewind the ranges).
+
 What is NOT produced here and why:
   - client/quests: quest names, text and rewards are not in DB2 on the modern engine; the
     server sends them and the client caches them in Cache/WDB/<locale>/questcache.wdb.
@@ -187,14 +192,66 @@ def prov(table: str, build: str) -> dict:
     }
 
 
+PROVENANCE = ("layer", "source", "build_first_seen", "build_last_seen", "confidence")
+
+
+def build_tuple(b: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in b.split("."))
+
+
+def fold_history(path: Path, rows: list[dict], key: str) -> tuple[int, int]:
+    """Fold the datamine rows already on disk into a newer build's rows.
+
+    An unchanged row keeps its build_first_seen, so the file records the range of builds it
+    existed in. A changed row is replaced by the new version. A row whose ID the new build
+    no longer has is kept as it was (its build_last_seen is the last build that had it), so
+    references to removed IDs never dangle. Returns (carried, kept)."""
+    if not path.exists():
+        return 0, 0
+    with open(path, encoding="utf-8") as f:
+        on_disk = [r for r in map(json.loads, filter(str.strip, f)) if r.get("source", {}).get("kind") == "datamine"]
+    new_ids = {r[key] for r in rows}
+    removed = [r for r in on_disk if r[key] not in new_ids]
+    old = {}
+    for r in on_disk:  # newest row per ID (removed IDs can have several historical rows)
+        if r[key] not in old or build_tuple(r["build_last_seen"]) > build_tuple(old[r[key]]["build_last_seen"]):
+            old[r[key]] = r
+    carried = 0
+    for r in rows:
+        prev = old.get(r[key])
+        if (prev is None or r.get("source", {}).get("kind") != "datamine"
+                or prev["build_first_seen"] == r["build_first_seen"]):
+            continue
+        if {k: v for k, v in prev.items() if k not in PROVENANCE} == {k: v for k, v in r.items() if k not in PROVENANCE}:
+            if build_tuple(prev["build_first_seen"]) < build_tuple(r["build_first_seen"]):
+                r["build_first_seen"] = prev["build_first_seen"]
+                carried += 1
+    rows.extend(removed)
+    return carried, len(removed)
+
+
+def newest_build_on_disk(out: Path) -> str | None:
+    newest = None
+    for path in out.glob("*.jsonl"):
+        with open(path, encoding="utf-8") as f:
+            for r in map(json.loads, filter(str.strip, f)):
+                if r.get("source", {}).get("kind") == "datamine":
+                    b = r["build_last_seen"]
+                    if newest is None or build_tuple(b) > build_tuple(newest):
+                        newest = b
+    return newest
+
+
 def write_jsonl(path: Path, rows: list[dict], key: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows.sort(key=lambda r: r[key])
+    carried, kept = fold_history(path, rows, key)
+    rows.sort(key=lambda r: (r[key], build_tuple(r["build_last_seen"])))
     with open(path, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n")
     rel = path.relative_to(REPO) if path.is_relative_to(REPO) else path
-    print(f"  wrote {rel}: {len(rows)} rows")
+    notes = [f"{carried} unchanged since an earlier build"] * bool(carried) + [f"{kept} removed in this build, kept"] * bool(kept)
+    print(f"  wrote {rel}: {len(rows)} rows" + (f" ({', '.join(notes)})" if notes else ""))
 
 
 # ───────────────────────────── transforms ─────────────────────────────
@@ -592,6 +649,11 @@ def main() -> int:
             registry_path.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
             print(f"registered {args.build} in builds.json")
 
+    out_dir = Path(args.out).resolve() if Path(args.out).is_absolute() else REPO / args.out
+    newest = newest_build_on_disk(out_dir) if out_dir.is_dir() else None
+    if newest and build_tuple(newest) > build_tuple(args.build):
+        raise SystemExit(f"{out_dir} already has rows from {newest}; extracting the older {args.build} "
+                         "would rewind their build ranges. Extract into another --out to compare.")
     print(f"build {args.build}: tables cached under {cache}")
     fetch_tables(args.build, cache, args.offline)
     out = Path(args.out).resolve() if Path(args.out).is_absolute() else REPO / args.out
