@@ -33,9 +33,20 @@ Lookups by ID are the primary access pattern. Names are for display and are loca
 
 ```sql
 -- what drops a given item, and how sure are we
-SELECT npc_id, drops, kills, confidence, build_last_seen
+SELECT holder_kind, holder_id, drops, kills, confidence, build_last_seen
 FROM world_loot WHERE item_id = :item_id;
 ```
+
+### From an AI agent (MCP)
+
+`tools/mcp_server.py` serves the SQLite file over the Model Context Protocol (stdio, standard library only, read-only): `search`, `get_item`, `get_npc`, `get_quest`, `get_object`, `get_recipe`, `dataset_info`, and a guarded read-only `query_sql`. Every row it returns carries a citation in the CONVENTIONS section 7 form, and it reports counts, not rates.
+
+```bash
+python tools/build_sqlite.py                    # or download opendata-<version>.sqlite from a release
+claude mcp add opendata -- python3 /path/to/opendata/tools/mcp_server.py --db /path/to/opendata.sqlite
+```
+
+Opening this repo in Claude Code offers the server through `.mcp.json` (it reads `dist/opendata.sqlite`).
 
 ## Building locally
 

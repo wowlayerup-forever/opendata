@@ -8,7 +8,7 @@ Read CONVENTIONS.md before answering from this data. The rules that matter most 
 - Check the `layer` and `confidence` fields before stating something as fact. `client` rows are exact for their build. `world` rows with `confidence: unverified` are hypotheses from a Classic Era emulator, not Forever observations. `derived` rows are opinion.
 - Drop rates are drops/kills, not a stored percentage. Quote the counts.
 - Cite the dataset version and the row: "opendata 2026.11.1, world/loot npc 92341 item 92831 (verified, 47/1203)".
-- Do not invent IDs. An ID absent from data/client/ for the current build does not exist on Forever.
+- Do not invent IDs. An item, spell, recipe or object ID absent from data/client/ does not exist on Forever. client/quests and client/npcs are different: they come from players' client caches and only hold what someone has seen, so a missing quest or NPC is unknown, not nonexistent.
 - For addon or WeakAura code, check data/api/<build>/functions.jsonl before using an API function. If it is not listed for the build, assume it does not exist.
 - Never write to data/client/, data/world/ or data/market/ as an agent. You may author data/derived/ records; set generator.kind to "agent" and name the model.
 
@@ -21,6 +21,10 @@ Read CONVENTIONS.md before answering from this data. The rules that matter most 
 - [schemas/](schemas/): JSON Schema per table
 - [data/](data/): JSONL per layer and table
 - [examples/](examples/): sample rows for each table, validated in CI
+
+## MCP server
+
+tools/mcp_server.py serves the release SQLite over MCP (stdio): search, get_item, get_npc, get_quest, get_object, get_recipe, dataset_info, query_sql (read-only). Rows come with a `cite` string to quote. `claude mcp add opendata -- python3 tools/mcp_server.py --db <opendata.sqlite>`.
 
 ## Release files
 
