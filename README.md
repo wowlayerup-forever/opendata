@@ -69,7 +69,7 @@ The programs are not code-signed yet, so Windows SmartScreen and macOS Gatekeepe
 
 ## Contribute code or data (developers)
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) (the working rules, for people and coding agents alike). Quick start:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) (the working rules, for people and coding agents alike). Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Quick start:
 
 ```bash
 git clone https://github.com/wowlayerup-forever/opendata && cd opendata
