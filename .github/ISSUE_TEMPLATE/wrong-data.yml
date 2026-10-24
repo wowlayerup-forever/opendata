@@ -1,0 +1,29 @@
+name: Wrong data
+description: A row in the dataset disagrees with what you see in game.
+labels: ["data"]
+body:
+  - type: input
+    id: release
+    attributes:
+      label: Dataset release
+      placeholder: "2026.11.1 (or the cite string, e.g. opendata 2026.11.1, world/loot npc 568 item 2589 (verified, 47/120))"
+    validations:
+      required: true
+  - type: input
+    id: row
+    attributes:
+      label: Table and key
+      placeholder: "world/loot holder npc 568 item 2589, or client/quests quest 303"
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What you saw instead, and how often
+      description: Counts help most ("looted 30 of them, it dropped 11 times"). Screenshots of tooltips are welcome.
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Client build (from /dump GetBuildInfo() or the login screen)

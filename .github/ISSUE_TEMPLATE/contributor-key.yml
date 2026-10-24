@@ -1,0 +1,35 @@
+name: Contributor key
+description: Ask for a key so the uploader can send your play sessions to the shared dataset.
+title: "Contributor key for @<your GitHub handle>"
+labels: ["contributor-key"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for wanting to contribute observations. **This issue is public: do not post an email address, a key, or anything private here.** A maintainer will reply on this issue to arrange sending your key privately.
+
+        The key is a `contributor.json` file. Put it next to `opendata-uploader` and run the uploader once; it moves the key into place. Keys are personal: do not share yours. If you think yours leaked, comment here or open a new issue and it will be replaced.
+  - type: input
+    id: handle
+    attributes:
+      label: GitHub handle
+      description: Your batches are attributed to github:<handle>.
+      placeholder: octocat
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where you play
+      options: [Windows, macOS, Linux (Wine, Lutris, Bottles)]
+    validations:
+      required: true
+  - type: checkboxes
+    id: understood
+    attributes:
+      label: Understood
+      options:
+        - label: The collector records loot, vendors, quests, trainers and creature levels as IDs, counts, prices and map positions, and my uploads become part of a CC BY 4.0 dataset.
+          required: true
+        - label: I will not post private information in this issue.
+          required: true

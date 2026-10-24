@@ -165,7 +165,7 @@ def main() -> int:
         if stale:
             print(f"\nWARNING: the client's interface is {db['interface']} but the .toc files say "
                   f"{', '.join(f'{n} {t}' for n, t in stale.items())}. Update '## Interface:' in "
-                  f"tools/addons/*/*.toc (and the Interface line in CLAUDE.md/HANDOFF.md), then --install-addons again.")
+                  f"tools/addons/*/*.toc (and the interface number in HANDOFF.md), then --install-addons again.")
         if not dry:
             registry = json.loads(registry_path.read_text(encoding="utf-8"))
             for b in registry["builds"]:
