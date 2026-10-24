@@ -79,3 +79,8 @@ jobs:
             -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"query":"Example Staff"}}}' \
             | grep -q '"id":100001' && echo "image serves MCP"
           docker logs svc
+
+  uploader:
+    uses: ./.github/workflows/uploader-build.yml
+    with:
+      version: ci

@@ -2,7 +2,7 @@
 ## Title: OpenDataCollector
 ## Notes: Records loot, vendors, quest givers, trainers and NPC levels for the opendata dataset. IDs and counts only.
 ## Author: wowlayerup-forever
-## Version: 0.9.0
+## Version: 0.9.1
 ## X-License: MIT
 ## X-Website: https://github.com/wowlayerup-forever/opendata
 ## SavedVariables: OpenDataCollectorDB

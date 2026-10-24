@@ -1,7 +1,7 @@
 name: addon release
 
 # Tag collector-vX.Y.Z on main to publish OpenDataCollector X.Y.Z as a zip on a GitHub
-# release. The .toc must already say Version: X.Y.Z (bump it in a PR); the workflow
+# release, together with the standalone opendata-uploader for Windows, macOS and Linux. The .toc must already say Version: X.Y.Z (bump it in a PR); the workflow
 # refuses a mismatch. 0.x versions are pre-releases. Dataset releases (YYYY.MM.N) stay
 # the repository's "latest" release. No cloud access.
 
@@ -13,8 +13,23 @@ permissions:
   contents: write
 
 jobs:
-  publish:
+  version:
     if: github.repository == 'wowlayerup-forever/opendata'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo "version=${GITHUB_REF_NAME#collector-v}" >> "$GITHUB_OUTPUT"
+
+  uploader:
+    needs: version
+    uses: ./.github/workflows/uploader-build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  publish:
+    needs: [version, uploader]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +48,13 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "prerelease=$([[ $V == 0.* ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           (cd dist && sha256sum "OpenDataCollector-$V.zip" > "OpenDataCollector-$V.zip.sha256")
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: opendata-uploader-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums for the uploader
+        run: cd dist && sha256sum opendata-uploader-*.zip > "opendata-uploader-${{ steps.pkg.outputs.version }}.sha256" && cat opendata-uploader-*.sha256
       - uses: softprops/action-gh-release@v2
         with:
           name: OpenDataCollector ${{ steps.pkg.outputs.version }}
@@ -41,6 +63,8 @@ jobs:
           files: |
             dist/OpenDataCollector-${{ steps.pkg.outputs.version }}.zip
             dist/OpenDataCollector-${{ steps.pkg.outputs.version }}.zip.sha256
+            dist/opendata-uploader-*.zip
+            dist/opendata-uploader-*.sha256
           body: |
             OpenDataCollector ${{ steps.pkg.outputs.version }} for World of Warcraft: Forever (interface 16001).
 
@@ -48,5 +72,7 @@ jobs:
 
             **What it records:** loot windows, merchant windows, quest accepts and turn-ins, trainer windows and creature levels, as Blizzard IDs, counts, prices and map positions. No character names, chat, or player GUIDs.
 
-            **Contributing:** after playing, run `python tools/uploader.py --wow "<WoW>/_classic_"` from a checkout of this repo. To send batches to the shared dataset, ask the maintainers for a contributor key file. See the [README](https://github.com/wowlayerup-forever/opendata#contributing-observations).
+            **Uploading:** download `opendata-uploader-${{ steps.pkg.outputs.version }}-<your platform>.zip`, unzip it anywhere, and double-click `opendata-uploader` after playing (log out first so the game writes its data). It finds your WoW install, saves the batches and, if you have a contributor key, sends them. To contribute to the shared dataset, ask the maintainers for a `contributor.json` key file and put it next to the program; it is imported on the first run.
+
+            The uploader is not code-signed yet. **Windows:** SmartScreen says "Windows protected your PC": click *More info*, then *Run anyway*. **macOS:** the first time, right-click the file and choose *Open*, then *Open* again (or run `xattr -d com.apple.quarantine opendata-uploader`). **Linux:** `chmod +x opendata-uploader` if needed. Checksums are in `opendata-uploader-${{ steps.pkg.outputs.version }}.sha256`.
             ${{ steps.pkg.outputs.prerelease == 'true' && '**Pre-release:** tested against a mocked client only; it has not yet run on the live Forever client.' || '' }}

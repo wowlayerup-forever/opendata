@@ -49,13 +49,15 @@ tools/import_cache.py  client WDB cache -> data/client/quests + cache-only creat
 tools/addons/OpenDataCollector/ in-game observation collector (loot, vendors, quests, trainers, levels)
 tools/uploader.py      collector SavedVariables -> signed JSON batches in .cache/batches/ (not committed)
 tools/package_addon.py .toc checks + reproducible zip; addon releases: bump .toc Version in a PR, then tag collector-vX.Y.Z
+tools/opendata_uploader.py  player app around uploader.py (double-click: find WoW, import key, upload); frozen with PyInstaller
 tools/reconcile.py     batches -> data/world/*.jsonl, deterministic
 tools/launch.py        launch-day sequence over the tools above (--dry-run first)
 tools/mcp_server.py    MCP server (stdio) over dist/opendata.sqlite; read-only, cites rows
 service/               Cloud Run image (stdlib): MODE=ingest (POST /v1/batches) or MODE=mcp (MCP over HTTP)
 tests/                 addons under LuaJIT against a mocked WoW API (wowmock.lua), through uploader/reconcile/import_api; MCP server over stdio
 .github/workflows/     ci (PRs: validate, addons, image; no GCP), deploy (main -> Cloud Run), reconcile (nightly -> PR),
-                       release (tags -> GitHub release + public bucket), addon-release (collector-v* -> zip), extract (dispatch -> PR)
+                       release (tags -> GitHub release + public bucket), addon-release (collector-v* -> addon zip + uploader
+                       binaries via uploader-build), extract (dispatch -> PR)
 ```
 
 ## Testing the extractor without network
