@@ -34,6 +34,8 @@ jobs:
           PY
       - name: MCP server end to end over stdio
         run: python tests/test_mcp_server.py
+      - name: Cloud Run service (ingest + MCP over HTTP) with local storage
+        run: python tests/test_service.py
       - uses: actions/upload-artifact@v4
         with:
           name: opendata-sqlite
@@ -51,3 +53,25 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y luajit
       - name: Run both addons under LuaJIT against the mock client and through the Python pipeline
         run: python tests/run_addons.py
+
+  image:
+    # Builds the Cloud Run image and smoke-tests it. No GCP access: PR CI never authenticates.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/requirements.txt
+      - run: docker build -f service/Dockerfile -t opendata-service:ci .
+      - name: Run the image in MCP mode against the examples database
+        run: |
+          python tools/build_sqlite.py --root examples --out /tmp/rel/release.sqlite --version ci
+          chmod -R a+rX /tmp/rel
+          docker run -d --name svc -p 8080:8080 -v /tmp/rel:/rel:ro \
+            -e MODE=mcp -e RELEASE_DB=file:///rel/release.sqlite -e DB_CACHE=/tmp/cache.sqlite opendata-service:ci
+          for i in $(seq 30); do curl -fsS localhost:8080/healthz && break; sleep 1; done
+          curl -fsS -X POST localhost:8080/mcp -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"query":"Example Staff"}}}' \
+            | grep -q '"id":100001' && echo "image serves MCP"
+          docker logs svc

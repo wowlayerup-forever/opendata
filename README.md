@@ -48,6 +48,12 @@ claude mcp add opendata -- python3 /path/to/opendata/tools/mcp_server.py --db /p
 
 Opening this repo in Claude Code offers the server through `.mcp.json` (it reads `dist/opendata.sqlite`).
 
+A hosted, read-only instance of the same server (MCP Streamable HTTP, always on the latest release) runs on Cloud Run; its URL is listed with each release.
+
+### Contributing observations
+
+Install `tools/addons/OpenDataCollector/`, play, then run `python tools/uploader.py --wow "<WoW>/_classic_"`. To send your batches to the shared dataset, ask the maintainers for a contributor key file and save it as `~/.config/opendata/contributor.json`; the uploader then posts each session to the ingest service, which checks the signature and stores it for the nightly reconcile. Nothing in a batch identifies your character.
+
 ## Building locally
 
 ```bash

@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """Turn OpenDataCollector SavedVariables into signed JSON observation batches.
 
-v1 writes batches to a local directory that tools/reconcile.py reads. Hosted ingest comes
-later; the batch format here is what it will accept.
+Batches are always written to a local directory (which tools/reconcile.py can read), and
+sent to the project's ingest service when an endpoint is known: --endpoint, or the
+"endpoint" field of the key file the maintainers give you. The service stores them for the
+nightly reconcile; sending the same batch twice is harmless.
 
 Usage:
-  python tools/uploader.py --wow "/Applications/World of Warcraft/_classic_beta_"
+  python tools/uploader.py --wow "/Applications/World of Warcraft/_classic_"
   python tools/uploader.py path/to/OpenDataCollector.lua [more.lua ...] [--out DIR]
-  python tools/uploader.py --wow <dir> --contributor github:someone     # first run: names the key
+  python tools/uploader.py --wow <dir> --contributor github:someone     # local-only key, no ingest
+  python tools/uploader.py --wow <dir> --endpoint https://.../v1/batches
+
+To contribute to the shared dataset, ask the maintainers for a key file and save it as
+~/.config/opendata/contributor.json (keys made with --contributor are local only: the
+service does not know them).
 
 --wow finds WTF/Account/*/SavedVariables/OpenDataCollector.lua for every account, the
 same way Stockkeeper's sync does. Output goes to .cache/batches/ by default (git-ignored:
@@ -16,10 +23,10 @@ session and is named by the session id the addon gave it. Running this again mid
 replaces the file with the longer batch; nothing is counted twice. After a run, type
 /odc reset in game to clear the addon's buffer (it starts a new session id).
 
-Signing: each batch carries an HMAC-SHA256 over its canonical JSON, keyed with a
-per-contributor secret created on first run in ~/.config/opendata/contributor.json. This
-proves a batch is unmodified and lets an ingest server that knows the key attribute it.
-It is not a public-key signature. Keep the file private.
+Signing: each batch carries an HMAC-SHA256 over its canonical JSON, keyed with the
+per-contributor secret in ~/.config/opendata/contributor.json. This proves a batch is
+unmodified and lets the ingest service, which holds the same key, attribute it. It is not
+a public-key signature. Keep the file private.
 
 Event grammar (one tab-separated string per event in the addon, see the .lua):
   L  t source map uiMap x y spell playerLevel entries     loot window, one per source
@@ -39,6 +46,8 @@ import json
 import os
 import secrets
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -234,7 +243,9 @@ def main() -> int:
     ap.add_argument("files", nargs="*", help="OpenDataCollector.lua SavedVariables files")
     ap.add_argument("--wow", help="WoW product directory (e.g. .../_classic_beta_); scans every account")
     ap.add_argument("--out", default=str(REPO / ".cache" / "batches"))
-    ap.add_argument("--contributor", help="handle for a new key, e.g. github:someone")
+    ap.add_argument("--contributor", help="handle for a new local-only key, e.g. github:someone")
+    ap.add_argument("--endpoint", help="ingest URL (default: the key file's endpoint, if any)")
+    ap.add_argument("--no-send", action="store_true", help="only write local files, even if an endpoint is known")
     args = ap.parse_args()
 
     files = [Path(f) for f in args.files]
@@ -248,6 +259,7 @@ def main() -> int:
     known_builds = {b["build"] for b in json.loads((REPO / "builds.json").read_text(encoding="utf-8"))["builds"]}
 
     written = replaced = existing = empty = bad_total = conflicts = 0
+    outgoing: list[dict] = []
     for path in files:
         db = load(path).get("OpenDataCollectorDB")
         if not isinstance(db, dict):
@@ -269,6 +281,7 @@ def main() -> int:
                 n = len(old["events"])
                 if old["events"] == batch["events"]:
                     existing += 1
+                    outgoing.append(batch)
                     continue
                 if old["events"] != batch["events"][:n]:
                     conflicts += 1
@@ -280,13 +293,42 @@ def main() -> int:
             tmp = dest.with_suffix(".part")
             tmp.write_text(json.dumps(batch, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
             tmp.replace(dest)
+            outgoing.append(batch)
     print(f"{written} new and {replaced} grown batches written to {out}, {existing} unchanged, {empty} empty, "
           f"{bad_total} bad events skipped, {conflicts} conflicts")
-    if conflicts:
+    endpoint = None if args.no_send else (args.endpoint or key.get("endpoint"))
+    failed = 0
+    if endpoint:
+        statuses: dict[str, int] = {}
+        for batch in outgoing:
+            status, reply = send(endpoint, batch)
+            if status >= 400:
+                failed += 1
+                print(f"  {batch['batch_id']}: HTTP {status} {reply.get('error', '')}", file=sys.stderr)
+            else:
+                statuses[reply.get("status", "?")] = statuses.get(reply.get("status", "?"), 0) + 1
+        sent = ", ".join(f"{n} {s}" for s, n in sorted(statuses.items())) or "nothing"
+        print(f"sent to {endpoint}: {sent}{f', {failed} failed' if failed else ''}")
+    if conflicts or failed:
         return 1
     if written or replaced or existing:
         print("you can now type /odc reset in game")
     return 0
+
+
+def send(endpoint: str, batch: dict) -> tuple[int, dict]:
+    req = urllib.request.Request(endpoint, data=json.dumps(batch, ensure_ascii=False).encode("utf-8"), method="POST",
+                                 headers={"Content-Type": "application/json", "User-Agent": "opendata-uploader/1"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status, json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read() or b"{}")
+        except ValueError:
+            return e.code, {}
+    except (urllib.error.URLError, TimeoutError) as e:
+        return 599, {"error": f"unreachable: {e}"}
 
 
 if __name__ == "__main__":

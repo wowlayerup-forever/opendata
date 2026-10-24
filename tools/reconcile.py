@@ -101,7 +101,7 @@ def signature_ok(batch: dict, key_hex: str) -> bool:
 
 def load_batches(dir_: Path, keys: dict[str, str], trust_unknown: bool, builds: set[str]) -> list[dict]:
     out, skipped = [], Counter()
-    for path in sorted(dir_.glob("*.json")):
+    for path in sorted(dir_.rglob("*.json")):  # flat locally; batches/<kind>/<handle>/ when synced from the bucket
         b = json.loads(path.read_text(encoding="utf-8"))
         if b.get("format") != 1:
             skipped["unknown format"] += 1

@@ -40,6 +40,14 @@ HANDOFF tasks 1 to 5 from 2026-10-22 are done and merged (PRs #1 to #6). CI gree
 - Item stats, damage and armor are computed with the standard client formulas from `RandPropPoints`, `ItemDamage*`, `ItemArmor*`; raw inputs are on each row. `INV_BUCKET` (slot to budget column) and the caster-weapon flag `Flags_1 & 0x200` are the likeliest errors if a tooltip disagrees.
 - Owner's other tools (separate, not public): `stefan-routes`, `Stockkeeper` (its `tools/sync.py` merges SavedVariables across accounts; `uploader.py --wow` follows the same pattern), `gearfinder.py`.
 
+## Hosting (GCP, set up 2026-10)
+
+Decided with the owner: everything on one GCP project (its id is in the private infra repo) in us-central1, defined by gcloud scripts in the private repo wowlayerup-forever/opendata-infra (never in this public repo), contributor keys issued by the owner, automatic deploys on merge (no approval gate; branch protection on `main` is the safeguard).
+
+- Cloud Run `opendata-ingest` (MODE=ingest): signed batches -> private, versioned batch bucket. Keys in Secret Manager.
+- Cloud Run `opendata-mcp` (MODE=mcp): public read-only MCP over HTTP from the public releases bucket.
+- GitHub Actions: `deploy` on main, `reconcile` nightly (opens a PR; validate runs inside it because GITHUB_TOKEN PRs do not trigger ci), `release` also uploads to the public bucket. Workload Identity Federation, pinned to this repo; one service account per job.
+
 ## Next, in order
 
 The Forever beta closed on 2026-10-23 before the addons could run, so every in-game step moves to launch day. Nothing can be checked in a client until then. Both addons have never run: expect the first live session to need fixes.

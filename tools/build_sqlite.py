@@ -199,7 +199,8 @@ def main() -> int:
         con.close()
 
     total = sum(counts.values())
-    print(f"wrote {out.relative_to(REPO)}: {len(created)} tables, {total} rows, builds {sorted(builds) or '[]'}")
+    shown = out.relative_to(REPO) if out.is_relative_to(REPO) else out
+    print(f"wrote {shown}: {len(created)} tables, {total} rows, builds {sorted(builds) or '[]'}")
     for t in sorted(counts):
         print(f"  {t}: {counts[t]}")
     return 0
