@@ -162,7 +162,13 @@ def("GetTrainerServiceItemLink", function(i) local t = S.trainer[i]; return t.cr
 
 -- ── addons and documentation ─────────────────────────────────────────────────
 S.addons = {}   -- list of {name=, loaded=}
+local TOC_VERSION = {}
+for line in io.lines("tools/addons/OpenDataCollector/OpenDataCollector.toc") do
+    local v = line:match("^## Version:%s*(%S+)")
+    if v then TOC_VERSION.OpenDataCollector = v end
+end
 def("C_AddOns", {
+    GetAddOnMetadata = function(name, field) return field == "Version" and TOC_VERSION[name] or nil end,
     GetNumAddOns = function() return #S.addons end,
     GetAddOnInfo = function(i) return S.addons[i].name end,
     IsAddOnLoaded = function(i)

@@ -86,8 +86,10 @@ local function startBatch()
     db.format = DB_FORMAT
     db.batches = db.batches or {}
     local version, build = GetBuildInfo()
+    local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
     batch = {
         id = newBatchID(),
+        addon_version = getMeta and getMeta("OpenDataCollector", "Version") or nil,
         build = version .. "." .. build,
         locale = GetLocale(),
         faction = UnitFactionGroup("player"),

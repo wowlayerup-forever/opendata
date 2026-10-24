@@ -56,7 +56,7 @@ claude mcp add --transport http opendata https://opendata-mcp-4fn67a62qq-uc.a.ru
 
 ### Contributing observations
 
-Install `tools/addons/OpenDataCollector/`, play, then run `python tools/uploader.py --wow "<WoW>/_classic_"`. To send your batches to the shared dataset, ask the maintainers for a contributor key file and save it as `~/.config/opendata/contributor.json`; the uploader then posts each session to the ingest service, which checks the signature and stores it for the nightly reconcile. Nothing in a batch identifies your character.
+Install OpenDataCollector (zip from the [releases](https://github.com/wowlayerup-forever/opendata/releases), entries named "OpenDataCollector"), play, then run `python tools/uploader.py --wow "<WoW>/_classic_"`. To send your batches to the shared dataset, ask the maintainers for a contributor key file and save it as `~/.config/opendata/contributor.json`; the uploader then posts each session to the ingest service, which checks the signature and stores it for the nightly reconcile. Nothing in a batch identifies your character.
 
 ## Building locally
 
