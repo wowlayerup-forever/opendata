@@ -56,7 +56,13 @@ claude mcp add --transport http opendata https://opendata-mcp-4fn67a62qq-uc.a.ru
 
 ### Contributing observations
 
-Install OpenDataCollector (zip from the [releases](https://github.com/wowlayerup-forever/opendata/releases), entries named "OpenDataCollector"), play, then run `python tools/uploader.py --wow "<WoW>/_classic_"`. To send your batches to the shared dataset, ask the maintainers for a contributor key file and save it as `~/.config/opendata/contributor.json`; the uploader then posts each session to the ingest service, which checks the signature and stores it for the nightly reconcile. Nothing in a batch identifies your character.
+From the [releases](https://github.com/wowlayerup-forever/opendata/releases) named "OpenDataCollector", download the addon zip and the `opendata-uploader` zip for your system (Windows, macOS Apple Silicon or Intel, Linux).
+
+1. Unzip the addon into `<WoW>/_classic_/Interface/AddOns/` and restart the game.
+2. Play, then log out (the game writes the addon's data on logout).
+3. Double-click `opendata-uploader`. It finds your WoW install, saves the session batches and, with a contributor key, sends them to the ingest service, which checks the signature and stores them for the nightly reconcile.
+
+To contribute to the shared dataset, ask the maintainers for a `contributor.json` key file and put it next to `opendata-uploader`; it is imported on the first run. Without a key, batches are only kept on your machine. Nothing in a batch identifies your character. Developers can run `python tools/uploader.py` from a checkout instead.
 
 ## Building locally
 

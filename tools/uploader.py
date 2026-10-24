@@ -239,25 +239,31 @@ def find_savedvariables(wow: Path) -> list[Path]:
     return sorted(wow.glob("WTF/Account/*/SavedVariables/OpenDataCollector.lua"))
 
 
-def main() -> int:
+USER_AGENT = "opendata-uploader/dev"
+
+
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="*", help="OpenDataCollector.lua SavedVariables files")
-    ap.add_argument("--wow", help="WoW product directory (e.g. .../_classic_beta_); scans every account")
+    ap.add_argument("--wow", action="append", default=[],
+                    help="WoW product directory (e.g. .../_classic_); scans every account; may repeat")
     ap.add_argument("--out", default=str(REPO / ".cache" / "batches"))
     ap.add_argument("--contributor", help="handle for a new local-only key, e.g. github:someone")
     ap.add_argument("--endpoint", help="ingest URL (default: the key file's endpoint, if any)")
     ap.add_argument("--no-send", action="store_true", help="only write local files, even if an endpoint is known")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     files = [Path(f) for f in args.files]
-    if args.wow:
-        files += find_savedvariables(Path(args.wow).expanduser())
+    for wow in args.wow:
+        files += find_savedvariables(Path(wow).expanduser())
     if not files:
         ap.error("no SavedVariables files (pass paths or --wow)")
     key = load_key(args.contributor)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    known_builds = {b["build"] for b in json.loads((REPO / "builds.json").read_text(encoding="utf-8"))["builds"]}
+    registry = REPO / "builds.json"  # absent in the standalone app; the note is only for maintainers
+    known_builds = ({b["build"] for b in json.loads(registry.read_text(encoding="utf-8"))["builds"]}
+                    if registry.exists() else None)
 
     written = replaced = existing = empty = bad_total = conflicts = 0
     outgoing: list[dict] = []
@@ -274,7 +280,7 @@ def main() -> int:
             if batch is None:
                 empty += 1
                 continue
-            if batch["build"] not in known_builds:
+            if known_builds is not None and batch["build"] not in known_builds:
                 print(f"  note: build {batch['build']} is not in builds.json yet; the reconciler will need it registered")
             dest = out / f"{batch['batch_id']}.json"
             if dest.exists():
@@ -319,7 +325,7 @@ def main() -> int:
 
 def send(endpoint: str, batch: dict) -> tuple[int, dict]:
     req = urllib.request.Request(endpoint, data=json.dumps(batch, ensure_ascii=False).encode("utf-8"), method="POST",
-                                 headers={"Content-Type": "application/json", "User-Agent": "opendata-uploader/1"})
+                                 headers={"Content-Type": "application/json", "User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, json.loads(r.read() or b"{}")

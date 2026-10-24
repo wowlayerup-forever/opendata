@@ -6,7 +6,7 @@ Records what you see in game for the opendata `world/` layer: loot windows, merc
 
 1. Download `OpenDataCollector-<version>.zip` from the [releases](https://github.com/wowlayerup-forever/opendata/releases) (the `OpenDataCollector ...` entries) and unzip it into `<WoW>/<product dir>/Interface/AddOns/`, or copy this folder there. Restart the game fully.
 2. Play. `/odc` shows how much is recorded.
-3. Log out (or `/reload`) so the client writes SavedVariables, then:
+3. Log out (or `/reload`) so the client writes SavedVariables, then double-click `opendata-uploader` (from the same release), or from a checkout:
 
 ```bash
 python tools/uploader.py --wow "/Applications/World of Warcraft/_classic_beta_" --contributor github:<you>   # first time
