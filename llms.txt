@@ -24,7 +24,7 @@ Read CONVENTIONS.md before answering from this data. The rules that matter most 
 
 ## MCP server
 
-tools/mcp_server.py serves the release SQLite over MCP (stdio): search, get_item, get_npc, get_quest, get_object, get_recipe, dataset_info, query_sql (read-only). Rows come with a `cite` string to quote. `claude mcp add opendata -- python3 tools/mcp_server.py --db <opendata.sqlite>`.
+tools/mcp_server.py serves the release SQLite over MCP (stdio): search, get_item, get_npc, get_quest, get_object, get_recipe, dataset_info, query_sql (read-only). Rows come with a `cite` string to quote. `claude mcp add opendata -- python3 tools/mcp_server.py --db <opendata.sqlite>`. Hosted (latest release, Streamable HTTP): https://opendata-mcp-4fn67a62qq-uc.a.run.app/mcp
 
 ## Release files
 

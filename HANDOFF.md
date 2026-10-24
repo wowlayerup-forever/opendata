@@ -48,6 +48,8 @@ Decided with the owner: everything on one GCP project (its id is in the private 
 - Cloud Run `opendata-mcp` (MODE=mcp): public read-only MCP over HTTP from the public releases bucket.
 - GitHub Actions: `deploy` on main, `reconcile` nightly (opens a PR; validate runs inside it because GITHUB_TOKEN PRs do not trigger ci), `release` also uploads to the public bucket. Workload Identity Federation, pinned to this repo; one service account per job.
 
+Live since 2026-10-24: both services deployed by `deploy` (health on `/health`; Cloud Run reserves `/healthz`), ingest tested end to end with a throwaway contributor (stored, idempotent re-send, forged batch 401; test data deleted, key revoked), `reconcile` run on the empty bucket. Hosted MCP: https://opendata-mcp-4fn67a62qq-uc.a.run.app/mcp. No contributors are registered yet: `python contributors.py add github:<handle>` in the infra repo. The owner's `gh` may be active as `gnalsa` (read-only on this repo); use the `wowlayerup-forever` account for pushes and merges.
+
 ## Next, in order
 
 The Forever beta closed on 2026-10-23 before the addons could run, so every in-game step moves to launch day. Nothing can be checked in a client until then. Both addons have never run: expect the first live session to need fixes.

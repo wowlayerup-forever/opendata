@@ -44,6 +44,8 @@ jobs:
             --cache-control "public, max-age=300"
       - uses: softprops/action-gh-release@v2
         with:
+          # YYYY.MM.0 tags are pre-releases (beta data, rehearsals); real releases start at .1
+          prerelease: ${{ endsWith(github.ref_name, '.0') }}
           files: |
             dist/opendata-*.sqlite
             dist/opendata-*-parquet.tar.gz

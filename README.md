@@ -48,7 +48,11 @@ claude mcp add opendata -- python3 /path/to/opendata/tools/mcp_server.py --db /p
 
 Opening this repo in Claude Code offers the server through `.mcp.json` (it reads `dist/opendata.sqlite`).
 
-A hosted, read-only instance of the same server (MCP Streamable HTTP, always on the latest release) runs on Cloud Run; its URL is listed with each release.
+A hosted, read-only instance of the same server runs on Cloud Run, always on the latest release (MCP Streamable HTTP, no sign-in):
+
+```bash
+claude mcp add --transport http opendata https://opendata-mcp-4fn67a62qq-uc.a.run.app/mcp
+```
 
 ### Contributing observations
 
