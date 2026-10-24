@@ -2,7 +2,7 @@
 ## Title: APISurface
 ## Notes: Dumps the addon API surface (functions, C_ namespaces, documented events) to SavedVariables for the opendata dataset.
 ## Author: wowlayerup-forever
-## Version: 1
+## Version: 1.0.0
 ## SavedVariables: APISurfaceDB
 
 APISurface.lua

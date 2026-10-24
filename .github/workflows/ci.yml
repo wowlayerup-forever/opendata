@@ -53,6 +53,10 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y luajit
       - name: Run both addons under LuaJIT against the mock client and through the Python pipeline
         run: python tests/run_addons.py
+      - name: Addon .toc and packaging checks
+        run: |
+          python tools/package_addon.py OpenDataCollector
+          python tools/package_addon.py APISurface --check
 
   image:
     # Builds the Cloud Run image and smoke-tests it. No GCP access: PR CI never authenticates.

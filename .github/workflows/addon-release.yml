@@ -1,0 +1,52 @@
+name: addon release
+
+# Tag collector-vX.Y.Z on main to publish OpenDataCollector X.Y.Z as a zip on a GitHub
+# release. The .toc must already say Version: X.Y.Z (bump it in a PR); the workflow
+# refuses a mismatch. 0.x versions are pre-releases. Dataset releases (YYYY.MM.N) stay
+# the repository's "latest" release. No cloud access.
+
+on:
+  push:
+    tags: ["collector-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.repository == 'wowlayerup-forever/opendata'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/requirements.txt
+      - run: sudo apt-get update && sudo apt-get install -y luajit
+      - name: Run the addon against the mock client and through the pipeline
+        run: python tests/run_addons.py
+      - name: Package
+        id: pkg
+        run: |
+          V="${GITHUB_REF_NAME#collector-v}"
+          python tools/package_addon.py OpenDataCollector --expect-version "$V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$([[ $V == 0.* ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          (cd dist && sha256sum "OpenDataCollector-$V.zip" > "OpenDataCollector-$V.zip.sha256")
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: OpenDataCollector ${{ steps.pkg.outputs.version }}
+          prerelease: ${{ steps.pkg.outputs.prerelease }}
+          make_latest: false
+          files: |
+            dist/OpenDataCollector-${{ steps.pkg.outputs.version }}.zip
+            dist/OpenDataCollector-${{ steps.pkg.outputs.version }}.zip.sha256
+          body: |
+            OpenDataCollector ${{ steps.pkg.outputs.version }} for World of Warcraft: Forever (interface 16001).
+
+            **Install:** unzip into `<WoW>/_classic_/Interface/AddOns/` so you get `Interface/AddOns/OpenDataCollector/OpenDataCollector.toc`, then fully restart the game (a new addon folder is not picked up by `/reload`). In game, `/odc` shows what has been recorded.
+
+            **What it records:** loot windows, merchant windows, quest accepts and turn-ins, trainer windows and creature levels, as Blizzard IDs, counts, prices and map positions. No character names, chat, or player GUIDs.
+
+            **Contributing:** after playing, run `python tools/uploader.py --wow "<WoW>/_classic_"` from a checkout of this repo. To send batches to the shared dataset, ask the maintainers for a contributor key file. See the [README](https://github.com/wowlayerup-forever/opendata#contributing-observations).
+            ${{ steps.pkg.outputs.prerelease == 'true' && '**Pre-release:** tested against a mocked client only; it has not yet run on the live Forever client.' || '' }}

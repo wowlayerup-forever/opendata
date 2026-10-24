@@ -111,6 +111,10 @@ def collector() -> None:
     lv = {(r["npc_id"], r["level"]): r["n"] for r in rows(w / "npc_levels.jsonl")}
     check(lv == {(568, 19): 1, (568, 20): 1}, f"levels: one per spawn, skull ignored (got {lv})")
     check(len(rows(w / "spawns.jsonl")) >= 2, "spawn points recorded")
+    import re
+    toc_version = re.search(r"^## Version:\s*(\S+)", (REPO / "tools/addons/OpenDataCollector/OpenDataCollector.toc").read_text(), re.M).group(1)
+    versions = {json.loads(p.read_text())["addon_version"] for p in batches.glob("*.json")}
+    check(versions == {toc_version}, f"batches carry the collector version from the .toc ({versions})")
     validate(root)
 
     lua("tests/scenario_collector.lua", str(sv), "reset")

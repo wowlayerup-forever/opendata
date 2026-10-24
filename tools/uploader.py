@@ -219,6 +219,7 @@ def make_batch(raw: dict, key: dict) -> tuple[dict | None, int]:
         "locale": raw.get("locale"),
         "faction": raw.get("faction"),
         "started": raw.get("started"),
+        "addon_version": raw.get("addon_version"),
         "events": events,
     }
     signed = {"contributor": key["contributor"], **body}
