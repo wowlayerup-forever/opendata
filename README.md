@@ -1,109 +1,131 @@
 # opendata
 
-Open, versioned game data for World of Warcraft: Forever, keyed by Blizzard IDs, built for humans and agents.
+Open, versioned game data for **World of Warcraft: Forever**, keyed by Blizzard IDs, built for people and AI agents.
 
-The goal is a dataset that any tool, addon author, guide writer, or AI agent (Claude, OpenAI, Grok, local models) can build on without scraping a website and without guessing. Every row says where it came from, which client build it was seen in, and how much to trust it.
+Any tool, addon author, guide writer or AI agent (Claude, OpenAI, Grok, local models) should be able to build on this without scraping a website and without guessing. Every row says where it came from, which client build it was seen in, and how far to trust it. Data is [CC BY 4.0](LICENSE-DATA), code is [MIT](LICENSE).
 
-**Status: scaffolding.** Schemas, conventions, validator and build tooling exist. The data directories are empty until the first extraction from a Forever client build lands. Forever launches 2026-11-04.
+## Status
 
-## What is in here
+Forever launches **2026-11-04**. Until then the dataset holds what could be gathered during the beta:
 
-| Path | What | Trust |
+| Layer | Now | After launch |
 |---|---|---|
-| `data/client/` | Items, spells, recipes, NPC and object templates from the Forever client's DB2 tables; quests and NPC levels from the client cache | Exact for the build it was extracted from; computed fields carry their raw inputs |
-| `data/world/` | Loot, spawns, vendor stock, quest givers. Server-side facts that only player observations can establish | Carries `confidence` and sample size on every row |
-| `data/market/` | Auction house aggregates (daily per-item stats per realm and faction). Raw snapshots are not stored in git | Observed |
-| `data/derived/` | BiS lists, leveling routes, craft routes, talent builds. Opinion, versioned and attributed, referencing IDs from the layers above | Opinion, never fact |
-| `data/api/` | The addon API surface per client build: functions, events, widget methods, and diffs between builds | Exact for the build |
-| `schemas/` | JSON Schema for every table | |
-| `tools/` | Validator and SQLite builder | |
-| `builds.json` | Registry of Forever client builds this dataset has been extracted from | |
+| `client` | 31.8k items, 31.9k spells, 2.35k recipes, 530 NPCs, 2k objects (beta build 1.60.1.70374) and 46 quests from a player's client cache | Re-extracted for the live build; quests and NPCs grow with every imported cache |
+| `world` | Empty: the collector addon had no chance to run before the beta closed | Loot, vendors, quest givers, trainers, spawns and levels from players' sessions, reconciled nightly |
+| `api` | Empty | The live client's addon API, dumped on launch day |
+| `market`, `derived` | Empty | Later |
 
-Read [CONVENTIONS.md](CONVENTIONS.md) before adding or consuming data. It is short and it is the contract. If you are an agent, read [llms.txt](llms.txt) first.
+The current release is the beta-data pre-release [`2026.10.0`](https://github.com/wowlayerup-forever/opendata/releases/tag/2026.10.0); `2026.11.1` follows the launch. Computed item stats, weapon damage and armor have not yet been checked against in-game tooltips.
 
-## Using the data
+## Use the data
 
-Each tagged release ships:
+Every release has `opendata-<version>.sqlite` (all tables in one file), Parquet per table, and `SHA256SUMS`. The newest SQLite is also at a stable public URL that supports HTTP range requests and CORS, so a web page can query it in place with sql.js-httpvfs or sqlite-wasm without downloading all of it:
 
-- `opendata-<version>.sqlite`: every table, one file. Open it with any SQLite client, or query it over HTTP range requests with sqlite-wasm or sql.js-httpvfs without downloading the whole thing.
-- Parquet files per table, for pandas, DuckDB, Polars.
-- The raw JSONL under `data/`, which is what git tracks.
+```
+https://storage.googleapis.com/wowlayerup-forever-releases/opendata-latest.sqlite
+```
 
-Lookups by ID are the primary access pattern. Names are for display and are localized; IDs are the contract.
+Look things up by ID; names are for display. Tables are `<layer>_<table>`:
 
 ```sql
--- what drops a given item, and how sure are we
+-- what drops an item, from how many looted corpses
 SELECT holder_kind, holder_id, drops, kills, confidence, build_last_seen
-FROM world_loot WHERE item_id = :item_id;
+FROM world_loot WHERE item_id = 2589;
+
+-- a quest and its XP (JSON columns work with json_extract)
+SELECT name, quest_level, json_extract(rewards, '$.xp') AS xp FROM client_quests WHERE quest_id = 303;
 ```
 
-### From an AI agent (MCP)
+Before relying on a row, read [CONVENTIONS.md](CONVENTIONS.md) (short; it is the contract). The rules that matter most:
 
-`tools/mcp_server.py` serves the SQLite file over the Model Context Protocol (stdio, standard library only, read-only): `search`, `get_item`, `get_npc`, `get_quest`, `get_object`, `get_recipe`, `dataset_info`, and a guarded read-only `query_sql`. Every row it returns carries a citation in the CONVENTIONS section 7 form, and it reports counts, not rates.
+- **Layers never mix.** `client` is exact client data, `world` is what players observed, `derived` is attributed opinion.
+- **Counts, not rates.** A drop chance is `drops / kills`, and 3 out of 4 is not "75%" in any useful sense. Quote the counts.
+- **`client/quests` and `client/npcs` are partial.** They come from players' client caches and only hold what someone has seen. A missing quest or NPC is unknown, not nonexistent.
+- **Cite the version and row:** `opendata 2026.11.1, world/loot npc 568 item 2589 (verified, 47/120)`.
 
-```bash
-python tools/build_sqlite.py                    # or download opendata-<version>.sqlite from a release
-claude mcp add opendata -- python3 /path/to/opendata/tools/mcp_server.py --db /path/to/opendata.sqlite
-```
+## Use it from an AI agent
 
-Opening this repo in Claude Code offers the server through `.mcp.json` (it reads `dist/opendata.sqlite`).
-
-A hosted, read-only instance of the same server runs on Cloud Run, always on the latest release (MCP Streamable HTTP, no sign-in):
+A hosted MCP server answers from the latest release (Streamable HTTP, read-only, no sign-in):
 
 ```bash
 claude mcp add --transport http opendata https://opendata-mcp-4fn67a62qq-uc.a.run.app/mcp
 ```
 
-### Contributing observations
+Tools: `search`, `get_item`, `get_npc`, `get_quest`, `get_object`, `get_recipe`, `dataset_info`, and a guarded read-only `query_sql`. Every row it returns has a `cite` string, and it reports counts, not rates. To run it yourself against a local file: `python tools/mcp_server.py --db opendata-<version>.sqlite` (stdio, standard library only). Agents answering from the data should read [llms.txt](llms.txt) first.
 
-From the [releases](https://github.com/wowlayerup-forever/opendata/releases) named "OpenDataCollector", download the addon zip and the `opendata-uploader` zip for your system (Windows, macOS Apple Silicon or Intel, Linux).
+## Contribute observations (players)
 
-1. Unzip the addon into `<WoW>/_classic_/Interface/AddOns/` and restart the game.
-2. Play, then log out (the game writes the addon's data on logout).
-3. Double-click `opendata-uploader`. It finds your WoW install, saves the session batches and, with a contributor key, sends them to the ingest service, which checks the signature and stores them for the nightly reconcile.
+The `world` layer only exists if players record what they see. From the [releases named "OpenDataCollector"](https://github.com/wowlayerup-forever/opendata/releases), download the addon and the `opendata-uploader` for your system (Windows, macOS Apple Silicon or Intel, Linux).
 
-To contribute to the shared dataset, ask the maintainers for a `contributor.json` key file and put it next to `opendata-uploader`; it is imported on the first run. Without a key, batches are only kept on your machine. Nothing in a batch identifies your character. Developers can run `python tools/uploader.py` from a checkout instead.
+1. Unzip the addon into `<WoW>/_classic_/Interface/AddOns/` (the Forever folder name may differ; it is the one with `Interface` and `WTF` in it) and restart the game fully.
+2. Play normally. `/odc` in chat shows what has been recorded. Log out when done; the game writes the addon's data on logout.
+3. Double-click `opendata-uploader`. It finds your install, saves the session and, if you have a contributor key, sends it. After a successful upload, `/odc reset` in game clears the addon's buffer.
 
-## Building locally
+**What is recorded:** loot windows, merchant windows, quest accepts and turn-ins, trainer windows and creature levels, as Blizzard IDs, counts, prices and map positions. No character names, chat or player GUIDs.
 
-```bash
-pip install -r tools/requirements.txt
-python tools/validate.py            # schema + cross-reference checks on data/ and examples/
-python tools/build_sqlite.py        # writes dist/opendata.sqlite from data/
-```
+**Getting a contributor key:** [open a "Contributor key" issue](https://github.com/wowlayerup-forever/opendata/issues/new?template=contributor-key.yml) with your GitHub handle. Do not post an email address or anything private there; a maintainer replies on the issue to arrange sending the key privately. Put the `contributor.json` you receive next to `opendata-uploader`; it is imported on the first run. Without a key, your batches stay on your machine.
 
-## Extracting a client build
+The programs are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper warn on first run; the release notes say how to proceed. Checksums are attached to every release.
 
-`tools/extract_client.py` pulls a build's DB2 tables from [wago.tools](https://wago.tools) (cached under `.cache/wago/`) and writes `data/client/{items,spells,recipes,npcs,objects}.jsonl`. The "extract client build" workflow in the Actions tab does the same and opens a PR.
+## Contribute code or data (developers)
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) (the working rules, for people and coding agents alike). Quick start:
 
 ```bash
-python tools/extract_client.py --list-builds                 # which products carry 1.x builds
-python tools/extract_client.py --build 1.60.1.70374 --register
+git clone https://github.com/wowlayerup-forever/opendata && cd opendata
+python3 -m venv .venv && .venv/bin/pip install -r tools/requirements.txt
+.venv/bin/python tools/validate.py          # schemas, build registry, keys, cross-references: 0 errors
+.venv/bin/python tools/build_sqlite.py      # dist/opendata.sqlite
 ```
 
-Forever beta builds are published under the wago product `wow_classic_beta`. Known builds are in `builds.json`.
+Everything in `tools/` is Python 3.11+ with the standard library plus `jsonschema`. The addon tests need [LuaJIT](https://luajit.org) (`brew install luajit`, `apt install luajit`).
 
-What the extractor does not cover, and why:
+### How data gets in
 
-- `client/quests` and NPC levels. On the modern engine these are not in DB2; the server sends them and the client caches them in `Cache/WDB/<locale>/questcache.wdb` and `creaturecache.wdb`. A cache importer (`source.kind: client_cache`) is the next tool to write.
-- Item stats, weapon damage and armor are computed from the client's budget tables (`RandPropPoints`, `ItemDamage*`, `ItemArmor*`) using the client's formulas. The raw inputs stay on the row (`stat_budget`, `damage.table`, `armor_source`). Treat the computed numbers as unverified until spot-checked against in-game tooltips.
-- The yellow skill threshold for recipes is not in the client data; green and gray are.
+```
+wago.tools DB2 tables  --extract_client.py-->  data/client/
+player's WDB cache     --import_cache.py---->  data/client/   (quests, NPCs, chests and nodes)
+APISurface addon       --import_api.py------>  data/api/<build>/
+OpenDataCollector  -->  opendata-uploader  -->  ingest service  -->  batch bucket
+                        nightly reconcile.py  -->  pull request  -->  data/world/
+validate.py on every PR;  a YYYY.MM.N tag  -->  SQLite + Parquet release, public bucket, hosted MCP
+```
 
-CI runs both on every pull request. A PR that adds an ID not present in the current client build fails.
+- `data/client/` and `data/api/` are generated; fix the tool, never the file.
+- `data/world/` is regenerated from all observation batches by `tools/reconcile.py`, deterministically. Rows seeded from an openly licensed emulator database would be marked `emu_seed` / `unverified`, and observations supersede or dispute them.
+- `data/derived/` (BiS lists, routes) is open to anyone, attributed, and may only reference IDs.
 
-## Contributing
+### What is where
 
-Pull requests, with CI green. See [CONTRIBUTING.md](CONTRIBUTING.md). Observations collected in-game go through the uploader and reconciler (separate repos, not yet published) and arrive here as bot-authored PRs with sample sizes attached. Hand-entered world facts are welcome but must say so in `source.kind`.
+| Path | What |
+|---|---|
+| `CONVENTIONS.md` | The data contract: layers, IDs, provenance, confidence, versioning, citation |
+| `schemas/` | JSON Schema per table |
+| `data/<layer>/<table>.jsonl` | The data, one JSON object per line, sorted by primary key |
+| `builds.json` | Every client build the data mentions |
+| `tools/` | Extractor, cache and API importers, uploader, reconciler, validator, SQLite builder, MCP server, packager, launch script |
+| `tools/addons/` | `OpenDataCollector` (for players) and `APISurface` (for maintainers) |
+| `service/` | The Cloud Run image: batch ingest and MCP over HTTP |
+| `tests/` | Addons under LuaJIT against a mocked WoW API, the MCP server, the service |
+| `examples/` | One or two invented rows per table, validated in CI, never released |
+
+The cloud setup (Google Cloud Run, Cloud Storage, Workload Identity Federation for GitHub Actions) is defined in a private infrastructure repository. This repo holds only the service code and the workflows, which read every identifier from repository secrets.
+
+## Reporting problems
+
+- **A wrong row:** [open a "Wrong data" issue](https://github.com/wowlayerup-forever/opendata/issues/new?template=wrong-data.yml) with the release, table, key, what you saw instead, and how often.
+- **A security problem** (ingest, keys, workflows): report it privately through [GitHub security advisories](https://github.com/wowlayerup-forever/opendata/security/advisories/new), not in a public issue. See [SECURITY.md](SECURITY.md).
 
 ## License
 
-Data (everything under `data/`, `examples/`, and release files) is licensed [CC BY 4.0](LICENSE-DATA). Code (`tools/`, CI, schemas) is [MIT](LICENSE).
+Data (everything under `data/`, `examples/`, and the release files) is [CC BY 4.0](LICENSE-DATA): use it for anything, with attribution. Code (`tools/`, `service/`, `tests/`, CI, schemas) is [MIT](LICENSE).
 
-World of Warcraft and all related names, items, quests and lore are trademarks and copyrights of Blizzard Entertainment, Inc. This is a fan project and is not affiliated with Blizzard. The license above covers this compilation and its code, not Blizzard's underlying content.
+World of Warcraft and all related names, items, quests and lore are trademarks and copyrights of Blizzard Entertainment, Inc. This is a fan project, not affiliated with Blizzard. The licenses cover this compilation and its code, not Blizzard's underlying content.
 
 ## Related
 
-- [pfQuest](https://github.com/shagu/pfQuest) and the [VMaNGOS](https://github.com/vmangos/core) / [CMaNGOS](https://github.com/cmangos/classic-db) world databases: Classic Era 1.12 reconstructions. Used only as a seed for `data/world/`, marked `confidence: unverified` until a Forever observation confirms a row.
-- [wago.tools](https://wago.tools): datamined DB2 tables per client build. The source for `data/client/`.
+- [wago.tools](https://wago.tools): datamined DB2 tables per client build, the source of `data/client/`.
+- [WoWDBDefs](https://github.com/wowdev/WoWDBDefs): DB2 column layouts per build.
+- [VMaNGOS](https://github.com/vmangos/core), [CMaNGOS](https://github.com/cmangos/classic-db), [pfQuest](https://github.com/shagu/pfQuest): Classic Era reconstructions; candidates for seeding `data/world/` as `unverified` (not done yet).
 - [ForeverWowCraft](https://foreverwowcraft.com/): live AH-priced crafting routes for Forever.
 - Polestar guide packs, which consume quest and item IDs from this dataset.

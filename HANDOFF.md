@@ -1,6 +1,6 @@
 # Handoff (2026-10-23, beta closed)
 
-For a Claude Code session continuing this work locally. Read CLAUDE.md and CONVENTIONS.md first.
+For a Claude Code session continuing this work locally. Read AGENTS.md and CONVENTIONS.md first.
 
 ## Where things stand
 
