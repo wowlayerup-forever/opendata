@@ -69,5 +69,5 @@ jobs:
         run: |
           for svc in opendata-ingest opendata-mcp; do
             url=$(gcloud run services describe "$svc" --region "$REGION" --format 'value(status.url)')
-            curl -fsS "$url/healthz" > /dev/null && echo "$svc healthy"
+            curl -fsS "$url/health" > /dev/null && echo "$svc healthy"
           done
