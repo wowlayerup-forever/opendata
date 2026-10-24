@@ -4,6 +4,8 @@ Thanks for helping. The bar is "a stranger, or an agent, can trust this row," wh
 
 ## Before you start
 
+Everyone taking part in this project follows the [code of conduct](CODE_OF_CONDUCT.md). Report problems to [wowlayerup@gmail.com](mailto:wowlayerup@gmail.com).
+
 Read [CONVENTIONS.md](CONVENTIONS.md). It is short. The validator enforces most of it, but the parts it cannot enforce (which layer a fact belongs in, whether a count is honest) are on you. The working rules, setup and test commands are in [AGENTS.md](AGENTS.md); they apply to people and coding agents alike.
 
 **Just want to contribute what you see in game?** You do not need any of this: install the collector addon and the uploader from the releases, as described in the [README](README.md#contribute-observations-players).
