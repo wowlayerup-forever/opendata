@@ -6,7 +6,7 @@ service accounts so the public read side holds no write permission:
 
   MODE=ingest   POST /v1/batches     signed observation batches from tools/uploader.py
   MODE=mcp      POST /mcp            Model Context Protocol, Streamable HTTP transport
-  both          GET  /healthz
+  both          GET  /health     (not /healthz: Cloud Run's front end reserves that path)
 
 Ingest: a batch is accepted only if its HMAC verifies with the key registered for its
 contributor (see infra/contributors.py). It is stored as batches/<contributor>/<batch_id>.json.
@@ -336,7 +336,7 @@ class Handler(BaseHTTPRequestHandler):
         return self.rfile.read(n)
 
     def do_GET(self):
-        if self.path == "/healthz":
+        if self.path == "/health":
             return self.reply(200, {"ok": True, "mode": self.mode})
         if self.mode == "mcp" and self.path.split("?")[0] == "/mcp":
             return self.reply(405, {"error": "this server does not offer an SSE stream; POST JSON-RPC"}, {"Allow": "POST"})
