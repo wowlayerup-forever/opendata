@@ -119,6 +119,10 @@ def ingest_tests() -> None:
         check(s == 400, "unknown event type refused (400)")
         s, _, _ = http("GET", base + "/v1/batches")
         check(s == 404, "nothing to GET on ingest")
+        t0 = time.time()
+        s, _, r = http("POST", url, {"format": 1, "contributor": "github:harness", "batch_id": "00000000000000000000bb09",
+                                     "build": "1" * 150000 + "x", "events": [{"type": "loot"}]})
+        check(s == 400 and time.time() - t0 < 2, f"oversized field rejected fast ({time.time() - t0:.2f}s)")
 
         # the real uploader, end to end, with the endpoint taken from the key file
         key_file = kdir / "contributor.json"

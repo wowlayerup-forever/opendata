@@ -55,9 +55,12 @@ MAX_EVENTS = 200_000
 KEY_CACHE_S = 300
 RELOAD_S = int(os.environ.get("RELOAD_S", 900))
 EVENT_TYPES = {"loot", "vendor", "quest_accept", "quest_turnin", "trainer", "sighting"}
+# Bounded quantifiers, and fields are length-checked before matching, so a crafted value
+# cannot make validation slow (these run on unauthenticated input).
+MAX_FIELD = 128
 BATCH_ID = re.compile(r"[0-9a-f]{16,64}")
-CONTRIBUTOR = re.compile(r"[a-z]+:[A-Za-z0-9_.-]{1,64}")
-BUILD = re.compile(r"\d+\.\d+\.\d+\.\d+")
+CONTRIBUTOR = re.compile(r"[a-z]{1,16}:[A-Za-z0-9_.-]{1,64}")
+BUILD = re.compile(r"\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,9}")
 
 
 def log(**fields) -> None:
@@ -203,11 +206,14 @@ def ingest(batch, store, keys: Keys) -> tuple[int, dict]:
     if not isinstance(batch, dict):
         return 400, {"error": "body must be a JSON object"}
     contributor, bid = str(batch.get("contributor", "")), str(batch.get("batch_id", ""))
+    build = str(batch.get("build", ""))
+    if max(len(contributor), len(bid), len(build)) > MAX_FIELD:
+        return 400, {"error": "field too long"}
     if batch.get("format") != 1:
         return 400, {"error": "unknown batch format"}
     if not CONTRIBUTOR.fullmatch(contributor) or not BATCH_ID.fullmatch(bid):
         return 400, {"error": "bad contributor or batch_id"}
-    if not BUILD.fullmatch(str(batch.get("build", ""))):
+    if not BUILD.fullmatch(build):
         return 400, {"error": "bad build"}
     events = batch.get("events")
     if not isinstance(events, list) or not events or len(events) > MAX_EVENTS:
