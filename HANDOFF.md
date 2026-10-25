@@ -46,7 +46,10 @@ Decided with the owner: everything on one GCP project (its id is in the private 
 
 - Cloud Run `opendata-ingest` (MODE=ingest): signed batches -> private, versioned batch bucket. Keys in Secret Manager.
 - Cloud Run `opendata-mcp` (MODE=mcp): public read-only MCP over HTTP from the public releases bucket.
-- GitHub Actions: `deploy` on main, `reconcile` nightly (opens a PR; validate runs inside it because GITHUB_TOKEN PRs do not trigger ci), `release` also uploads to the public bucket. Workload Identity Federation, pinned to this repo; one service account per job.
+- GitHub Actions: `deploy` on main, `reconcile` nightly (opens a PR with a pseudonymous data-quality report; merges itself once CI passes when the GitHub App is configured), `release` also uploads to the public bucket. Workload Identity Federation, pinned to this repo; one service account per job. Every action is pinned to a commit SHA; Dependabot, CodeQL, secret scanning with push protection are on.
+- Durability: batch bucket versioned with 90-day soft delete; nightly Storage Transfer mirror to a versioned backup bucket in us-east1 (deletions mirrored, so purges reach it). Ingest can only write under `batches/`.
+- Bad data and deletion (infra repo `contributors.py`): `exclude` / `include` (private `control/exclusions.json`, honored by every reconcile run, so past data goes too), `pseudonyms` (map the report's `c-xxxxxx`), `purge` (revoke + delete every version in both buckets). PRIVACY.md describes this to contributors.
+- Monitoring (infra repo `monitoring.py`): uptime checks on both services, alerts (down, 5xx, ingest storage failure, release refresh failure) to wowlayerup@gmail.com, dashboard `opendata`.
 
 Live since 2026-10-24: both services deployed by `deploy` (health on `/health`; Cloud Run reserves `/healthz`), ingest tested end to end with a throwaway contributor (stored, idempotent re-send, forged batch 401; test data deleted, key revoked), `reconcile` run on the empty bucket. Hosted MCP: https://opendata-mcp-4fn67a62qq-uc.a.run.app/mcp. No contributors are registered yet: `python contributors.py add github:<handle>` in the infra repo. The owner's `gh` may be active as `gnalsa` (read-only on this repo); use the `wowlayerup-forever` account for pushes and merges.
 

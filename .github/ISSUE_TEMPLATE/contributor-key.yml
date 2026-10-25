@@ -29,7 +29,7 @@ body:
     attributes:
       label: Understood
       options:
-        - label: The collector records loot, vendors, quests, trainers and creature levels as IDs, counts, prices and map positions, and my uploads become part of a CC BY 4.0 dataset.
+        - label: I have read PRIVACY.md (https://github.com/wowlayerup-forever/opendata/blob/main/PRIVACY.md); my uploads become part of a CC BY 4.0 dataset as aggregates.
           required: true
         - label: I will not post private information in this issue.
           required: true

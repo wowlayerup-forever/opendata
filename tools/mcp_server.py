@@ -32,6 +32,7 @@ import argparse
 import json
 import sqlite3
 import sys
+import threading
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -64,25 +65,40 @@ class ToolError(Exception):
 
 
 class Data:
+    """The release database. One read-only connection per thread: a sqlite3 connection must
+    not be used by two threads at once (the HTTP service handles requests concurrently), and
+    query_sql's authorizer and step budget are per connection."""
+
     def __init__(self, path: Path):
         self.path = path
-        self.con: sqlite3.Connection | None = None
+        self.local = threading.local()
+        self.lock = threading.Lock()
         self.meta: dict[str, str] = {}
         self.columns: dict[str, dict[str, str]] = {}
+        self.loaded = False
+
+    @property
+    def con(self) -> sqlite3.Connection | None:
+        return getattr(self.local, "con", None)
 
     def open(self) -> sqlite3.Connection:
-        if self.con is None:
-            if not self.path.exists():
-                raise ToolError(f"{self.path} does not exist; build it with `python tools/build_sqlite.py` "
-                                "or download a release from github.com/wowlayerup-forever/opendata/releases")
-            con = sqlite3.connect(f"file:{self.path}?mode=ro", uri=True, check_same_thread=False)
-            con.row_factory = sqlite3.Row
-            con.execute("PRAGMA query_only = ON")
-            self.meta = {k: v for k, v in con.execute("SELECT key, value FROM meta")}
-            for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'"):
-                self.columns[t] = {r["name"]: r["type"] for r in con.execute(f'PRAGMA table_info("{t}")')}
-            self.con = con
-        return self.con
+        con = getattr(self.local, "con", None)
+        if con is not None:
+            return con
+        if not self.path.exists():
+            raise ToolError(f"{self.path} does not exist; build it with `python tools/build_sqlite.py` "
+                            "or download a release from github.com/wowlayerup-forever/opendata/releases")
+        con = sqlite3.connect(f"file:{self.path}?mode=ro", uri=True)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA query_only = ON")
+        with self.lock:
+            if not self.loaded:
+                self.meta = {k: v for k, v in con.execute("SELECT key, value FROM meta")}
+                for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'"):
+                    self.columns[t] = {r["name"]: r["type"] for r in con.execute(f'PRAGMA table_info("{t}")')}
+                self.loaded = True
+        self.local.con = con
+        return con
 
     @property
     def version(self) -> str:

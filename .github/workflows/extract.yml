@@ -44,8 +44,19 @@ jobs:
         run: |
           echo "## Extracted ${{ inputs.build }}" >> "$GITHUB_STEP_SUMMARY"
           for f in data/client/*.jsonl; do echo "- $(basename $f): $(wc -l < $f) rows" >> "$GITHUB_STEP_SUMMARY"; done
+      # with the app configured, ci runs on this PR; it is never auto-merged (client data gets a human look)
+      - name: App token
+        id: app
+        if: vars.RECONCILE_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RECONCILE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RECONCILE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
+          token: ${{ steps.app.outputs.token || github.token }}
           branch: extract/${{ inputs.build }}
           title: "client: extract build ${{ inputs.build }}"
           commit-message: "client: extract build ${{ inputs.build }} from wago.tools"

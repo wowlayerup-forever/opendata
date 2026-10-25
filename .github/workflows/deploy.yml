@@ -55,7 +55,7 @@ jobs:
             --image "${{ steps.image.outputs.image }}" \
             --service-account "${{ secrets.GCP_INGEST_SA }}" \
             --set-env-vars "MODE=ingest,BATCH_STORE=gs://${{ secrets.GCP_BATCH_BUCKET }},CONTRIBUTOR_KEYS=sm://projects/${{ secrets.GCP_PROJECT }}/secrets/contributor-keys" \
-            --allow-unauthenticated --max-instances 3 --concurrency 20 --memory 512Mi --cpu 1 --timeout 60
+            --allow-unauthenticated --max-instances 5 --concurrency 20 --memory 512Mi --cpu 1 --timeout 60
       - name: Deploy MCP
         if: env.CONFIGURED == 'true'
         run: |
@@ -63,7 +63,7 @@ jobs:
             --image "${{ steps.image.outputs.image }}" \
             --service-account "${{ secrets.GCP_MCP_SA }}" \
             --set-env-vars "MODE=mcp,RELEASE_DB=gs://${{ secrets.GCP_RELEASE_BUCKET }}/opendata-latest.sqlite" \
-            --allow-unauthenticated --max-instances 3 --concurrency 40 --memory 1Gi --cpu 1 --timeout 60
+            --allow-unauthenticated --max-instances 10 --concurrency 80 --memory 1Gi --cpu 1 --timeout 60
       - name: Health checks
         if: env.CONFIGURED == 'true'
         run: |

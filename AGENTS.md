@@ -37,6 +37,7 @@ python tools/build_sqlite.py                 # must build; every table exists ev
 python tests/run_addons.py                   # when tools/addons/, uploader, reconcile or import_api change (needs luajit)
 python tests/test_mcp_server.py              # when tools/mcp_server.py or the SQLite layout changes
 python tests/test_service.py                 # when service/ or the uploader changes
+python tests/test_reconcile.py               # when tools/reconcile.py changes (exclusions, quality report)
 python tools/package_addon.py OpenDataCollector --check   # when an addon's files or .toc change
 ```
 
@@ -49,7 +50,8 @@ If a schema changes: update `examples/`, bump nothing unless a field is removed 
 - Every user-visible change gets a CHANGELOG line under "Unreleased".
 - **Dataset release:** tag `YYYY.MM.N` on `main` (`.0` = pre-release). The release workflow builds SQLite + Parquet, attaches them to a GitHub release, and publishes to the public bucket the hosted MCP reads.
 - **Addon release:** bump `## Version:` in `tools/addons/OpenDataCollector/OpenDataCollector.toc` in a PR, then tag `collector-vX.Y.Z` (must match). The workflow runs the addon tests, builds the addon zip and the standalone uploader for four platforms, and publishes them. `0.x` = pre-release.
-- PRs opened by the nightly `reconcile` and by `extract` use the built-in token, which does not trigger CI; they validate inside their own workflow, and a maintainer merges them with the admin bypass.
+- The nightly `reconcile` PR carries a data-quality report (pseudonymous) and merges itself once CI passes, when the project's GitHub App is configured (`RECONCILE_APP_CLIENT_ID` variable, `RECONCILE_APP_PRIVATE_KEY` secret). `extract` PRs use the same app so CI runs, but are merged by a maintainer. Without the app, both fall back to the built-in token, which does not trigger CI; a maintainer then merges with the admin bypass.
+- Exclusions (contributors or batches the reconciler ignores) and the pseudonym key live in the private batch bucket, managed from the infrastructure repo. Never put contributor handles, exclusions or per-contributor data in this repo.
 
 ## Layout
 

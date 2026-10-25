@@ -61,7 +61,7 @@ The `world` layer only exists if players record what they see. From the [release
 2. Play normally. `/odc` in chat shows what has been recorded. Log out when done; the game writes the addon's data on logout.
 3. Double-click `opendata-uploader`. It finds your install, saves the session and, if you have a contributor key, sends it. After a successful upload, `/odc reset` in game clears the addon's buffer.
 
-**What is recorded:** loot windows, merchant windows, quest accepts and turn-ins, trainer windows and creature levels, as Blizzard IDs, counts, prices and map positions. No character names, chat or player GUIDs.
+**What is recorded:** loot windows, merchant windows, quest accepts and turn-ins, trainer windows and creature levels, as Blizzard IDs, counts, prices and map positions. No character names, chat or player GUIDs. [PRIVACY.md](PRIVACY.md) says exactly what is kept, where, who can see it, and how to have it deleted.
 
 **Getting a contributor key:** [open a "Contributor key" issue](https://github.com/wowlayerup-forever/opendata/issues/new?template=contributor-key.yml) with your GitHub handle. Do not post an email address or anything private there; a maintainer replies on the issue to arrange sending the key privately. Put the `contributor.json` you receive next to `opendata-uploader`; it is imported on the first run. Without a key, your batches stay on your machine.
 
