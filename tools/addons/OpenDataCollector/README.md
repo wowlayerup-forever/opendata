@@ -1,6 +1,6 @@
 # OpenDataCollector
 
-Records what you see in game for the opendata `world/` layer: loot windows, merchant windows, quest accepts and turn-ins, trainer windows, and creature levels. Only Blizzard IDs, counts, prices, levels and map positions are stored. No character names, chat, or player GUIDs.
+Records what you see in game for the opendata `world/` layer: loot windows, merchant windows, quest accepts and turn-ins, trainer windows, and creature levels. Only Blizzard IDs, counts, prices, levels and map positions are stored. No character names, chat, or player GUIDs. See [PRIVACY.md](https://github.com/wowlayerup-forever/opendata/blob/main/PRIVACY.md) for what is kept and how to have it deleted.
 
 ## Use
 

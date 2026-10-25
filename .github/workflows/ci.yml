@@ -39,6 +39,8 @@ jobs:
         run: python tests/test_mcp_server.py
       - name: Cloud Run service (ingest + MCP over HTTP) with local storage
         run: python tests/test_service.py
+      - name: Reconcile bad-data controls (exclusions, quality report)
+        run: python tests/test_reconcile.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: opendata-sqlite

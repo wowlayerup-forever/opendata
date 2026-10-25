@@ -28,6 +28,18 @@ Signatures: a batch is accepted if its HMAC verifies with the contributor's key 
 --keys, plus your own ~/.config/opendata/contributor.json). Batches from contributors with
 no key are skipped unless --trust-unknown.
 
+Exclusions: --exclude FILE ({"contributors": {handle: reason}, "batches": {batch_id: reason}})
+drops those batches before anything is counted. Because every run regenerates all
+observation rows, excluding a contributor also removes everything they sent before. The
+nightly workflow keeps this file in the private batch bucket, not in this public repo.
+
+Quality report: --report FILE writes a markdown summary for the reconcile PR: per
+contributor volume, rows backed by a single contributor, drop counts that disagree sharply
+with everyone else's (two-proportion z-test), and implausible timestamps. Contributors
+appear only as pseudonyms, because the PR is public: c-<6 hex of HMAC-SHA256(key, handle)>
+with the key from --pseudonym-key (kept in the private bucket, so a guessed handle cannot be
+checked against the report). Without a key, local runs fall back to a plain sha256.
+
 Interpretation rules:
   - A loot window is one source (corpse, node, chest, item) by its spawn GUID. A corpse
     opened twice is one window with the union of what was seen. kills = windows.
@@ -45,6 +57,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
+import time
 import hashlib
 import hmac
 import json
@@ -99,12 +113,27 @@ def signature_ok(batch: dict, key_hex: str) -> bool:
     return hmac.compare_digest(batch.get("signature", ""), want)
 
 
-def load_batches(dir_: Path, keys: dict[str, str], trust_unknown: bool, builds: set[str]) -> list[dict]:
+def load_exclusions(path: str | None) -> dict[str, dict[str, str]]:
+    if not path or not Path(path).exists():
+        return {"contributors": {}, "batches": {}}
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {"contributors": dict(raw.get("contributors") or {}), "batches": dict(raw.get("batches") or {})}
+
+
+def load_batches(dir_: Path, keys: dict[str, str], trust_unknown: bool, builds: set[str],
+                 exclusions: dict | None = None) -> list[dict]:
     out, skipped = [], Counter()
+    exclusions = exclusions or {"contributors": {}, "batches": {}}
     for path in sorted(dir_.rglob("*.json")):  # flat locally; batches/<kind>/<handle>/ when synced from the bucket
         b = json.loads(path.read_text(encoding="utf-8"))
         if b.get("format") != 1:
             skipped["unknown format"] += 1
+            continue
+        if b.get("contributor") in exclusions["contributors"]:
+            skipped["excluded contributor"] += 1
+            continue
+        if b.get("batch_id") in exclusions["batches"]:
+            skipped["excluded batch"] += 1
             continue
         key = keys.get(b.get("contributor", ""))
         if key is None and not trust_unknown:
@@ -386,6 +415,110 @@ def reconcile(batches: list[dict], spells: dict[int, str], recipes: list[dict], 
     return out
 
 
+# ───────────────────────────── quality report ─────────────────────────────
+
+PSEUDONYM_KEY: bytes | None = None
+
+
+def pseudonym(handle: str) -> str:
+    data = handle.encode("utf-8")
+    digest = hmac.new(PSEUDONYM_KEY, data, hashlib.sha256) if PSEUDONYM_KEY else hashlib.sha256(data)
+    return "c-" + digest.hexdigest()[:6]
+
+
+def quality_report(batches: list[dict], spells: dict[int, str], z_flag: float = 4.0, min_kills: int = 20) -> str:
+    """Markdown for the reconcile PR. Per contributor, loot is counted on that contributor's
+    own windows (one per spawn), which is what the comparison needs."""
+    skin = {sid for sid, n in spells.items() if n == "Skinning"}
+    pick = {sid for sid, n in spells.items() if n == "Pick Pocket"}
+    per_c: dict[str, dict] = defaultdict(lambda: {"batches": 0, "events": 0, "windows": {}, "bad_t": 0})
+    now = time.time()
+    for b in batches:
+        c = per_c[b["contributor"]]
+        c["batches"] += 1
+        c["events"] += len(b["events"])
+        for n, ev in enumerate(b["events"]):
+            t = ev.get("t") or 0
+            if t < 1735689600 or t > now + 86400:  # before 2025-01-01, or in the future
+                c["bad_t"] += 1
+            if ev["type"] != "loot":
+                continue
+            src = ev.get("source") or {}
+            kind = src.get("kind")
+            if kind not in ("npc", "object", "item") or src.get("id") is None:
+                continue
+            hk = ("skinning" if ev.get("spell_id") in skin else "pickpocket" if ev.get("spell_id") in pick else "npc") if kind == "npc" else kind
+            key = (hk, src["id"], src.get("spawn") or f"{b['batch_id']}:{n}")
+            items = c["windows"].setdefault(key, set())
+            items.update(it["item_id"] for it in ev.get("items", []))
+
+    # (holder) -> contributor -> kills ; (holder, item) -> contributor -> drops
+    kills: dict[tuple, Counter] = defaultdict(Counter)
+    drops: dict[tuple, Counter] = defaultdict(Counter)
+    for h, c in per_c.items():
+        for (hk, hid, _), items in c["windows"].items():
+            kills[(hk, hid)][h] += 1
+            for item in items:
+                drops[(hk, hid, item)][h] += 1
+
+    total_windows = sum(len(c["windows"]) for c in per_c.values())
+    lines = ["## Data quality", ""]
+    lines.append(f"{len(per_c)} contributors, {len(batches)} batches, {total_windows} loot windows. "
+                 "Contributors are shown as pseudonyms; maintainers can map them with the infra repo.")
+    lines += ["", "| contributor | batches | events | loot windows | share | bad timestamps |", "|---|---|---|---|---|---|"]
+    for h, c in sorted(per_c.items(), key=lambda kv: -len(kv[1]["windows"])):
+        share = len(c["windows"]) / total_windows if total_windows else 0
+        lines.append(f"| {pseudonym(h)} | {c['batches']} | {c['events']} | {len(c['windows'])} | {share:.0%} | {c['bad_t']} |")
+
+    single = sum(1 for cs in drops.values() if len(cs) == 1)
+    lines += ["", f"Loot rows backed by a single contributor: {single} of {len(drops)}."]
+    if len(per_c) >= 3:
+        top_h, top = max(per_c.items(), key=lambda kv: len(kv[1]["windows"]))
+        if total_windows and len(top["windows"]) / total_windows > 0.6:
+            lines.append(f"**{pseudonym(top_h)} supplies {len(top['windows']) / total_windows:.0%} of all loot windows.**")
+
+    # Each contributor's rate is compared with the median rate across contributors, so one
+    # inflated contributor cannot make the honest ones look deviant. With only two
+    # contributors the data cannot say which one is off; that is reported as a disagreement.
+    flags, pairs = [], []
+    for (hk, hid, item), cs in drops.items():
+        enough = {h: k for h, k in kills[(hk, hid)].items() if k >= min_kills}
+        rates = {h: cs.get(h, 0) / k for h, k in enough.items()}
+        if len(rates) >= 3:
+            ordered = sorted(rates.values())
+            mid = len(ordered) // 2
+            ref = ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+            k_max = max(enough.values())
+            ref = min(max(ref, 1 / (2 * k_max)), 1 - 1 / (2 * k_max))  # keep the variance away from zero
+            for h, k_c in enough.items():
+                z = (rates[h] - ref) / math.sqrt(ref * (1 - ref) / k_c)
+                if abs(z) >= z_flag:
+                    flags.append((abs(z), h, hk, hid, item, cs.get(h, 0), k_c, ref, z))
+        elif len(rates) == 2:
+            (h1, k1), (h2, k2) = enough.items()
+            d1, d2 = cs.get(h1, 0), cs.get(h2, 0)
+            p = (d1 + d2) / (k1 + k2)
+            if 0 < p < 1:
+                z = (d1 / k1 - d2 / k2) / math.sqrt(p * (1 - p) * (1 / k1 + 1 / k2))
+                if abs(z) >= z_flag:
+                    pairs.append((abs(z), h1, d1, k1, h2, d2, k2, hk, hid, item))
+    lines += ["", f"Drop counts far from the median contributor's (|z| >= {z_flag:g}, at least {min_kills} windows each, "
+                  f"three or more contributors): {len(flags)}"]
+    if flags:
+        lines += ["", "| contributor | holder | item | theirs | median rate | z |", "|---|---|---|---|---|---|"]
+        for _, h, hk, hid, item, d_c, k_c, ref, z in sorted(flags, reverse=True)[:20]:
+            lines.append(f"| {pseudonym(h)} | {hk} {hid} | {item} | {d_c}/{k_c} | {ref:.1%} | {z:+.1f} |")
+    if pairs:
+        lines += ["", f"Two contributors disagree and there is no third to tell which is off: {len(pairs)}", "",
+                  "| holder | item | one | other | z |", "|---|---|---|---|---|"]
+        for _, h1, d1, k1, h2, d2, k2, hk, hid, item in sorted(pairs, reverse=True)[:20]:
+            lines.append(f"| {hk} {hid} | {item} | {pseudonym(h1)} {d1}/{k1} | {pseudonym(h2)} {d2}/{k2} | {_:.1f} |")
+    if any(c["bad_t"] for c in per_c.values()):
+        lines += ["", "Some events have timestamps before 2025 or in the future (see the table); check those contributors' clocks or batches."]
+    lines += ["", "To exclude a contributor or batch: `contributors.py exclude` in the infra repo; the next run drops all of their batches."]
+    return "\n".join(lines) + "\n"
+
+
 # ───────────────────────────── merge with seeded rows ─────────────────────────────
 
 def merge_seeded(table: str, observed: list[dict], existing: list[dict], holders: dict, dispute_loot: int, dispute_vendor: int) -> tuple[list[dict], Counter]:
@@ -429,10 +562,17 @@ def main() -> int:
     ap.add_argument("--wago-cache", default=".cache/wago", help="where tools/extract_client.py caches DB2 CSVs (for UiMapAssignment)")
     ap.add_argument("--dispute-loot", type=int, default=200, help="loot windows without the item before an emu_seed row is disputed")
     ap.add_argument("--dispute-vendor", type=int, default=5, help="merchant windows without the item before an emu_seed row is disputed")
+    ap.add_argument("--exclude", help="JSON file of excluded contributors and batches")
+    ap.add_argument("--report", help="write a markdown data-quality report here")
+    ap.add_argument("--pseudonym-key", help="file with the secret for report pseudonyms (from the private bucket)")
     args = ap.parse_args()
 
     builds = {b["build"] for b in json.loads((REPO / "builds.json").read_text(encoding="utf-8"))["builds"]}
-    batches = load_batches(Path(args.batches), load_keys(args.keys), args.trust_unknown, builds)
+    global PSEUDONYM_KEY
+    if args.pseudonym_key and Path(args.pseudonym_key).exists():
+        PSEUDONYM_KEY = Path(args.pseudonym_key).read_bytes().strip()
+    exclusions = load_exclusions(args.exclude)
+    batches = load_batches(Path(args.batches), load_keys(args.keys), args.trust_unknown, builds, exclusions)
     client = Path(args.client) if Path(args.client).is_absolute() else REPO / args.client
     spells = {r["spell_id"]: r["name"] for r in read_jsonl(client / "spells.jsonl")}
     recipes = read_jsonl(client / "recipes.jsonl")
@@ -444,6 +584,11 @@ def main() -> int:
               f"(fetch with tools/extract_client.py --build <build>)", file=sys.stderr)
 
     result = reconcile(batches, spells, recipes, zones)
+    if args.report:
+        Path(args.report).parent.mkdir(parents=True, exist_ok=True)
+        excluded = sum(1 for _ in exclusions["contributors"]) + sum(1 for _ in exclusions["batches"])
+        Path(args.report).write_text(quality_report(batches, spells)
+                                     + (f"\n{excluded} exclusion entries applied.\n" if excluded else ""), encoding="utf-8")
     stats, holders = result.pop("_stats")[0], result.pop("_observed_holders")[0]
     out = Path(args.out) if Path(args.out).is_absolute() else REPO / args.out
     print(f"{len(batches)} batches, {stats['loot_windows']} loot windows, "

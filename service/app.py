@@ -293,8 +293,8 @@ class ReleaseDb:
         old = self.data
         tmp.replace(self.local)
         self.data, self.generation = new, gen
-        if old.con is not None:
-            old.con.close()
+        # old per-thread connections are left to be garbage-collected: another thread may
+        # still be answering a request from the previous release
         log(event="release_loaded", generation=gen, bytes=self.local.stat().st_size)
 
 
@@ -394,6 +394,13 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {"error": "not found"})
 
 
+class Server(ThreadingHTTPServer):
+    # The socketserver default listen backlog is 5; bursts beyond it are reset by the kernel.
+    # Cloud Run sends up to --concurrency requests at once to an instance.
+    request_queue_size = 512
+    daemon_threads = True
+
+
 def main() -> int:
     mode = os.environ.get("MODE", "")
     Handler.mode = mode
@@ -407,7 +414,7 @@ def main() -> int:
         raise SystemExit("MODE must be ingest or mcp")
     port = int(os.environ.get("PORT", 8080))
     log(event="start", mode=mode, port=port)
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    Server(("0.0.0.0", port), Handler).serve_forever()
     return 0
 
 

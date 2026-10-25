@@ -179,6 +179,18 @@ def mcp_tests() -> None:
         s, _, r = http("POST", url, b"{oops", accept)
         check(s == 400 and r["error"]["code"] == -32700, "malformed JSON -> 400 / -32700")
 
+        # concurrent tool calls: one shared SQLite connection used to mix up rows between threads
+        from concurrent.futures import ThreadPoolExecutor
+        calls = [{"name": "search", "arguments": {"query": "Example"}}, {"name": "get_item", "arguments": {"item_id": 100001}},
+                 {"name": "query_sql", "arguments": {"sql": "SELECT count(*) FROM client_items"}},
+                 {"name": "dataset_info", "arguments": {}}]
+        def one(i):
+            s, _, r = http("POST", url, {"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": calls[i % len(calls)]}, accept)
+            return s == 200 and isinstance(r, dict) and "result" in r and not r["result"].get("isError")
+        with ThreadPoolExecutor(32) as pool:
+            ok = list(pool.map(one, range(400)))
+        check(all(ok), f"400 concurrent tool calls all succeed ({ok.count(False)} failed)")
+
         time.sleep(1.1)
         subprocess.run([sys.executable, "tools/build_sqlite.py", "--root", "examples", "--out", str(db), "--version", "rel.2"],
                        cwd=REPO, check=True, capture_output=True)
