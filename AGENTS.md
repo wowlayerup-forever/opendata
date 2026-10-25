@@ -16,6 +16,7 @@ An open, versioned game dataset for World of Warcraft: Forever, keyed by Blizzar
 - **Dependencies:** `tools/` stays on the Python standard library plus `jsonschema` (build-time tools like PyInstaller are fine in workflows). No new runtime dependency without a reason in the PR.
 - **Public repo, so no infrastructure details.** No GCP identifiers (project id or number, billing account, service account emails, bucket names other than the public release URL, Workload Identity paths) and no secrets in any tracked file. Workflows read them from repository secrets, which are masked in the public logs. The concrete infrastructure is in a private repository.
 - **Workflow security.** Only workflows that run on `main` pushes, schedules, manual dispatch or tags may have `id-token: write`. Never give it to a workflow that runs on pull requests, never use `pull_request_target`, and gate every cloud job on `github.repository == 'wowlayerup-forever/opendata'`.
+- **Pin every action to a full commit SHA** with the version in a comment (`uses: owner/action@<40-char sha> # vX.Y.Z`). Dependabot updates both. Never reference a branch or a bare tag.
 - **Raw observations stay out of git.** Batches live in object storage; only reconciled aggregates are committed. Test fixtures under `tests/` are synthetic and must never reach `data/`.
 - Plain punctuation in docs and messages; no em dashes.
 
