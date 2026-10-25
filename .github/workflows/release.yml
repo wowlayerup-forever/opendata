@@ -14,8 +14,8 @@ jobs:
     env:
       GCP_CONFIGURED: ${{ secrets.GCP_WIF_PROVIDER != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - run: pip install -r tools/requirements.txt pyarrow
@@ -27,12 +27,12 @@ jobs:
           cd dist && tar czf "opendata-$V-parquet.tar.gz" parquet && sha256sum opendata-* > SHA256SUMS
       # Mirror to the public releases bucket (CORS + range requests, so browsers can query the
       # SQLite in place). Identifiers are secrets so they stay masked in the public logs.
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         if: github.repository == 'wowlayerup-forever/opendata' && env.GCP_CONFIGURED == 'true'
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_RELEASE_SA }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
         if: github.repository == 'wowlayerup-forever/opendata' && env.GCP_CONFIGURED == 'true'
       - name: Publish to the releases bucket
         if: github.repository == 'wowlayerup-forever/opendata' && env.GCP_CONFIGURED == 'true'
@@ -42,7 +42,7 @@ jobs:
           gcloud storage cp "dist/opendata-$V.sqlite" "dist/opendata-$V-parquet.tar.gz" dist/SHA256SUMS "$B/$V/" --quiet
           gcloud storage cp "dist/opendata-$V.sqlite" "$B/opendata-latest.sqlite" --quiet \
             --cache-control "public, max-age=300"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           # YYYY.MM.0 tags are pre-releases (beta data, rehearsals); real releases start at .1
           prerelease: ${{ endsWith(github.ref_name, '.0') }}
