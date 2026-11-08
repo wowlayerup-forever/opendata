@@ -42,7 +42,7 @@ jobs:
           gcloud storage cp "dist/opendata-$V.sqlite" "dist/opendata-$V-parquet.tar.gz" dist/SHA256SUMS "$B/$V/" --quiet
           gcloud storage cp "dist/opendata-$V.sqlite" "$B/opendata-latest.sqlite" --quiet \
             --cache-control "public, max-age=300"
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           # YYYY.MM.0 tags are pre-releases (beta data, rehearsals); real releases start at .1
           prerelease: ${{ endsWith(github.ref_name, '.0') }}
