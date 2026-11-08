@@ -55,7 +55,7 @@ jobs:
           merge-multiple: true
       - name: Checksums for the uploader
         run: cd dist && sha256sum opendata-uploader-*.zip > "opendata-uploader-${{ steps.pkg.outputs.version }}.sha256" && cat opendata-uploader-*.sha256
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           name: OpenDataCollector ${{ steps.pkg.outputs.version }}
           prerelease: ${{ steps.pkg.outputs.prerelease }}
